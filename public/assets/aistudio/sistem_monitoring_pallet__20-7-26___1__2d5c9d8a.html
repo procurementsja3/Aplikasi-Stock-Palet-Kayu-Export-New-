@@ -1,0 +1,2512 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring Stok Pallet Kayu</title>
+    <!-- Tambahkan library Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-black/60 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden fade-in">
+            <div class="bg-amber-800 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold text-lg"><i class="fas fa-lock mr-2"></i>Login Sistem</h3>
+                <button onclick="toggleLoginModal()" class="text-amber-200 hover:text-white transition"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="handleLogin(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input type="text" id="login-username" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Masukkan username">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="login-password" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="••••••••">
+                </div>
+                <button type="submit" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-2.5 rounded-lg transition-colors mt-4">
+                    Masuk
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/60 hidden z-[100] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg my-8 fade-in">
+            <div class="bg-blue-600 p-4 text-white flex justify-between items-center rounded-t-xl">
+                <h3 class="font-bold text-lg"><i class="fas fa-edit mr-2"></i>Edit Data Transaksi</h3>
+                <button onclick="closeEditModal()" class="text-blue-200 hover:text-white transition"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="handleEditSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <input type="hidden" id="edit-type">
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                    <input type="date" id="edit-date" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi SJA</label>
+                    <select id="edit-lokasi" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="SJA SEPANJANG">SJA SEPANJANG</option>
+                        <option value="SJA SEMARANG">SJA SEMARANG</option>
+                        <option value="SJA SUKODONO">SJA SUKODONO</option>
+                        <option value="SJA KARAWANG">SJA KARAWANG</option>
+                    </select>
+                </div>
+                
+                <div id="edit-batch-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Kode Batch</label>
+                    <input type="text" id="edit-batch" class="w-full border border-gray-300 rounded-lg p-2.5 uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div id="edit-supplier-container" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
+                        <input type="text" id="edit-supplier" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">No. PO</label>
+                            <input type="text" id="edit-po" class="w-full border border-gray-300 rounded-lg p-2.5 uppercase focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Qty PO</label>
+                            <input type="number" id="edit-po-qty" min="0" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="edit-qty-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty Transaksi (Pallet)</label>
+                    <input type="number" id="edit-qty" required min="1" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div id="edit-notes-container">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                    <textarea id="edit-notes" rows="2" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeEditModal()" class="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition font-medium">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 hidden z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center fade-in">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+            </div>
+            <h3 class="font-bold text-xl text-gray-800 mb-2">Hapus Data?</h3>
+            <p class="text-gray-600 mb-6 text-sm">Data transaksi yang dihapus tidak dapat dikembalikan. Ini akan mempengaruhi kalkulasi saldo pallet Anda.</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium flex-1">Batal</button>
+                <button onclick="executeDelete()" class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition font-medium flex-1">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Reset Modal -->
+    <div id="reset-confirm-modal" class="fixed inset-0 bg-black/60 hidden z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center fade-in">
+            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-trash-alt text-2xl"></i>
+            </div>
+            <h3 class="font-bold text-xl text-gray-800 mb-2">Reset Semua Data?</h3>
+            <p class="text-gray-600 mb-6 text-sm">Peringatan: Seluruh data akan <b>dihapus secara permanen</b>. Pastikan Anda sudah melakukan Backup Data sebelum melanjutkan.</p>
+            <div class="flex justify-center gap-3">
+                <button onclick="closeResetConfirmModal()" class="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium flex-1">Batal</button>
+                <button onclick="executeResetAll()" class="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition font-medium flex-1">Ya, Reset Semua</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-amber-800 text-white flex flex-col hidden md:flex shrink-0">
+            <div class="p-6 flex items-center gap-3 border-b border-amber-700">
+                <i class="fas fa-cubes text-2xl"></i>
+                <h1 class="text-lg font-bold tracking-wide leading-tight">Monitoring Stok Pallet</h1>
+            </div>
+            <div class="px-4 pt-4 pb-2" id="user-info-display">
+                <p class="text-xs text-amber-200 uppercase font-bold tracking-wider">Status Akses:</p>
+                <p class="text-sm font-medium text-white" id="current-user-role">Tamu (Read-Only)</p>
+            </div>
+            <nav class="flex-1 px-4 py-4 space-y-2">
+                <button onclick="navigate('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-900 transition-colors font-semibold">
+                    <i class="fas fa-chart-pie w-5"></i> Dashboard
+                </button>
+                <button onclick="navigate('po')" id="nav-po" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors">
+                    <i class="fas fa-file-invoice w-5"></i> Input PO Proc.
+                </button>
+                <button onclick="navigate('inbound')" id="nav-inbound" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors">
+                    <i class="fas fa-arrow-right-to-bracket w-5"></i> Kedatangan
+                </button>
+                <button onclick="navigate('outbound')" id="nav-outbound" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors">
+                    <i class="fas fa-right-from-bracket w-5"></i> Pengeluaran
+                </button>
+            </nav>
+            <!-- Admin Controls -->
+            <div class="p-4 border-t border-amber-700 mt-auto">
+                <button onclick="toggleLoginModal()" id="sidebar-login-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-950/50 hover:bg-amber-900 rounded-lg transition-colors text-sm font-medium">
+                    <i class="fas fa-lock"></i> Login Sistem
+                </button>
+                <button onclick="logoutUser()" id="sidebar-logout-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/80 hover:bg-red-600 rounded-lg transition-colors text-sm font-medium hidden">
+                    <i class="fas fa-unlock"></i> Logout (<span id="logout-username"></span>)
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- Mobile Header -->
+            <header class="md:hidden bg-amber-800 text-white p-4 flex justify-between items-center shadow-md shrink-0">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-cubes text-xl"></i>
+                    <h1 class="font-bold text-sm sm:text-base truncate">Monitoring Stok Pallet</h1>
+                </div>
+                <div class="flex gap-1 overflow-x-auto">
+                    <button onclick="navigate('dashboard')" class="p-2"><i class="fas fa-chart-pie"></i></button>
+                    <button onclick="navigate('po')" class="p-2"><i class="fas fa-file-invoice"></i></button>
+                    <button onclick="navigate('inbound')" class="p-2"><i class="fas fa-arrow-down"></i></button>
+                    <button onclick="navigate('outbound')" class="p-2"><i class="fas fa-arrow-up"></i></button>
+                    <button onclick="toggleLoginModal()" id="mobile-login-btn" class="p-2 ml-1 border-l border-amber-700 pl-2"><i class="fas fa-lock"></i></button>
+                    <button onclick="logoutUser()" id="mobile-logout-btn" class="p-2 ml-1 border-l border-amber-700 pl-2 text-red-300 hidden"><i class="fas fa-unlock"></i></button>
+                </div>
+            </header>
+
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50">
+                
+                <!-- VIEW: DASHBOARD -->
+                <div id="view-dashboard" class="fade-in block">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                            <h2 class="text-2xl font-bold text-gray-800">Dashboard Saldo Pallet</h2>
+                            <select id="dashboard-filter-lokasi" onchange="updateUI()" class="border-2 border-amber-600 text-amber-800 font-bold rounded-lg p-2 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition bg-amber-50 shadow-sm cursor-pointer">
+                                <option value="ALL" selected>Semua Lokasi</option>
+                                <option value="SJA SEPANJANG">SJA SEPANJANG</option>
+                                <option value="SJA SEMARANG">SJA SEMARANG</option>
+                                <option value="SJA SUKODONO">SJA SUKODONO</option>
+                                <option value="SJA KARAWANG">SJA KARAWANG</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="confirmResetAll()" id="btn-reset-data" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 hidden">
+                                <i class="fas fa-trash-alt"></i> Reset Data
+                            </button>
+                            <button onclick="backupData()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 hidden admin-only-btn">
+                                <i class="fas fa-download"></i> Backup data
+                            </button>
+                            <button onclick="document.getElementById('restore-file').click()" class="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 hidden admin-only-btn">
+                                <i class="fas fa-upload"></i> Restore data
+                            </button>
+                            <input type="file" id="restore-file" accept=".json" class="hidden" onchange="restoreData(event)">
+                        </div>
+                    </div>
+                    
+                    <!-- Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-blue-500 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 font-medium mb-1">Total Pallet Masuk</p>
+                                <p class="text-3xl font-bold text-gray-800" id="total-in">0</p>
+                            </div>
+                            <div class="p-3 bg-blue-100 text-blue-600 rounded-full">
+                                <i class="fas fa-box-open text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-red-500 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 font-medium mb-1">Total Pallet Keluar</p>
+                                <p class="text-3xl font-bold text-gray-800" id="total-out">0</p>
+                            </div>
+                            <div class="p-3 bg-red-100 text-red-600 rounded-full">
+                                <i class="fas fa-dolly text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl p-6 shadow-sm border-l-4 border-green-500 flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500 font-medium mb-1">Sisa Saldo Aktual</p>
+                                <p class="text-3xl font-bold text-gray-800" id="total-balance">0</p>
+                            </div>
+                            <div class="p-3 bg-green-100 text-green-600 rounded-full">
+                                <i class="fas fa-check-circle text-xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Grafik Pareto Kedatangan & Pengeluaran (Semua Lokasi) -->
+                    <div id="pareto-chart-container" class="bg-white rounded-xl shadow-sm overflow-hidden mb-8 p-6 hidden">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                            <h3 class="font-bold text-gray-800 text-lg"><i class="fas fa-chart-line mr-2 text-amber-600"></i>Grafik Pareto Pergerakan Pallet (All Plant)</h3>
+                            <button onclick="renderParetoChart()" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded transition">
+                                <i class="fas fa-sync-alt mr-1"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="relative w-full h-80">
+                            <canvas id="paretoChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Stock per Batch Table -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+                        <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                            <h3 class="font-bold text-gray-700">Rincian Saldo per Kode Batch</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider border-b">
+                                        <th class="p-4 font-medium">Lokasi</th>
+                                        <th class="p-4 font-medium">Kode Batch</th>
+                                        <th class="p-4 font-medium">Total Masuk</th>
+                                        <th class="p-4 font-medium">Total Keluar</th>
+                                        <th class="p-4 font-medium">Sisa Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="batch-balance-table" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                            <div id="empty-dashboard-msg" class="p-8 text-center text-gray-500 hidden">
+                                Belum ada data pergerakan pallet di lokasi ini.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Outstanding PO Table with Pagination -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+                        <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                            <h3 class="font-bold text-gray-700">Status Outstanding PO</h3>
+                        </div>
+                        
+                        <!-- Notification Banner for Open POs -->
+                        <div id="open-po-alert" class="hidden bg-orange-50 border-l-4 border-orange-500 p-4 m-4 rounded-r-lg shadow-sm">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-exclamation-triangle text-orange-500"></i>
+                                </div>
+                                <div class="ml-3 w-full">
+                                    <p class="text-sm text-orange-800 font-bold mb-1" id="open-po-alert-title">
+                                        Perhatian: Terdapat beberapa PO yang masih berstatus OPEN.
+                                    </p>
+                                    <ul id="open-po-alert-list" class="list-disc list-inside text-sm text-orange-700 space-y-1 ml-1">
+                                        <!-- List disisipkan oleh JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider border-b">
+                                        <th class="p-4 font-medium">Tanggal PO</th>
+                                        <th class="p-4 font-medium">No. PO</th>
+                                        <th class="p-4 font-medium">Supplier</th>
+                                        <th class="p-4 font-medium">Lokasi</th>
+                                        <th class="p-4 font-medium text-center">Qty PO</th>
+                                        <th class="p-4 font-medium text-center">Diterima</th>
+                                        <th class="p-4 font-medium text-center">Outstanding</th>
+                                        <th class="p-4 font-medium text-center">Status</th>
+                                        <th class="p-4 font-medium text-center th-admin-aksi hidden">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="outstanding-po-table" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                            <div id="empty-outstanding-msg" class="p-8 text-center text-gray-500 hidden">
+                                Belum ada data PO di lokasi ini.
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination Controls PO -->
+                        <div id="po-pagination-controls" class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center hidden">
+                            <span id="po-page-info" class="text-sm text-gray-600">Menampilkan 1-10 dari 0 data</span>
+                            <div class="flex gap-2">
+                                <button onclick="changePOPage(-1)" id="po-prev-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    <i class="fas fa-chevron-left"></i> Sebelumnya
+                                </button>
+                                <button onclick="changePOPage(1)" id="po-next-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    Selanjutnya <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Kedatangan Terakhir Table with Pagination -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+                        <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                            <h3 class="font-bold text-gray-700">Riwayat Kedatangan Terakhir</h3>
+                            <button onclick="navigate('inbound')" class="text-sm text-blue-600 hover:underline">Input Kedatangan</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider border-b">
+                                        <th class="p-4 font-medium">Tgl</th>
+                                        <th class="p-4 font-medium">Lokasi</th>
+                                        <th class="p-4 font-medium">Supplier & PO</th>
+                                        <th class="p-4 font-medium">Batch</th>
+                                        <th class="p-4 font-medium text-right">Qty Datang</th>
+                                        <th class="p-4 font-medium">Keterangan</th>
+                                        <th class="p-4 font-medium text-center th-admin-aksi hidden">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-recent-inbound-table" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                            <div id="empty-recent-inbound-msg" class="p-8 text-center text-gray-500 hidden">
+                                Belum ada data kedatangan di lokasi ini.
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination Controls Dash Inbound -->
+                        <div id="dash-inbound-pagination-controls" class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center hidden">
+                            <span id="dash-inbound-page-info" class="text-sm text-gray-600">Menampilkan 1-5 dari 0 data</span>
+                            <div class="flex gap-2">
+                                <button onclick="changeDashInboundPage(-1)" id="dash-inbound-prev-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    <i class="fas fa-chevron-left"></i> Sebelumnya
+                                </button>
+                                <button onclick="changeDashInboundPage(1)" id="dash-inbound-next-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    Selanjutnya <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Pengeluaran Terakhir Table with Pagination -->
+                    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                        <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                            <h3 class="font-bold text-gray-700">Riwayat Pengeluaran Terakhir</h3>
+                            <button onclick="navigate('outbound')" class="text-sm text-blue-600 hover:underline">Input Pengeluaran</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse whitespace-nowrap">
+                                <thead>
+                                    <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider border-b">
+                                        <th class="p-4 font-medium">Tanggal</th>
+                                        <th class="p-4 font-medium">Lokasi Asal</th>
+                                        <th class="p-4 font-medium">Kode Batch</th>
+                                        <th class="p-4 font-medium text-center">Qty Keluar</th>
+                                        <th class="p-4 font-medium">Tujuan / Keterangan</th>
+                                        <th class="p-4 font-medium text-center th-admin-aksi hidden">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-recent-outbound-table" class="text-sm divide-y divide-gray-100">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                            <div id="empty-recent-outbound-msg" class="p-8 text-center text-gray-500 hidden">
+                                Belum ada data pengeluaran di lokasi ini.
+                            </div>
+                        </div>
+                        
+                        <!-- Pagination Controls Outbound -->
+                        <div id="outbound-pagination-controls" class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center hidden">
+                            <span id="outbound-page-info" class="text-sm text-gray-600">Menampilkan 1-5 dari 0 data</span>
+                            <div class="flex gap-2">
+                                <button onclick="changeOutboundPage(-1)" id="outbound-prev-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    <i class="fas fa-chevron-left"></i> Sebelumnya
+                                </button>
+                                <button onclick="changeOutboundPage(1)" id="outbound-next-btn" class="px-3 py-1.5 border border-gray-300 rounded text-sm bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                    Selanjutnya <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: INPUT PO PROCUREMENT -->
+                <div id="view-po" class="fade-in hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Input PO Procurement</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Form PO -->
+                        <div class="lg:col-span-1 bg-white rounded-xl shadow-sm p-6 h-fit relative">
+                            <!-- Overlay Lock for unauthenticated users -->
+                            <div id="po-lock-overlay" class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                                <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                <p class="text-sm font-bold text-gray-600">Login untuk Menginput Data</p>
+                            </div>
+
+                            <h3 class="font-bold text-gray-700 mb-4 pb-2 border-b">Buat PO Baru</h3>
+                            <form id="form-po" onsubmit="handlePOSubmit(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Create PO</label>
+                                    <input type="date" id="po-date" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi SJA</label>
+                                    <select id="po-lokasi" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition bg-white disabled:bg-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed">
+                                        <option value="" disabled selected>-- Pilih Lokasi --</option>
+                                        <option value="SJA SEPANJANG">SJA SEPANJANG</option>
+                                        <option value="SJA SEMARANG">SJA SEMARANG</option>
+                                        <option value="SJA SUKODONO">SJA SUKODONO</option>
+                                        <option value="SJA KARAWANG">SJA KARAWANG</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
+                                    <input type="text" id="po-supplier" required placeholder="Contoh: PT. Kayu Jati" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">No. PO</label>
+                                    <input type="text" id="po-number" required placeholder="Contoh: PO-001" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition uppercase">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty PO (Pallet)</label>
+                                    <input type="number" id="po-qty" required min="1" placeholder="Total pesanan" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 mt-2">
+                                    <i class="fas fa-plus"></i> Simpan Master PO
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Table PO List -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-fit max-h-[70vh]">
+                            <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                                <h3 class="font-bold text-gray-700">Daftar Master PO</h3>
+                            </div>
+                            <div class="overflow-x-auto flex-1 p-0 relative">
+                                <!-- Lock Overlay -->
+                                <div id="po-table-lock" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center">
+                                    <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm font-bold text-gray-600">Login untuk melihat data</p>
+                                </div>
+                                <table class="w-full text-left border-collapse whitespace-nowrap">
+                                    <thead>
+                                        <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                            <th class="p-4 font-medium">Tgl PO</th>
+                                            <th class="p-4 font-medium">Lokasi</th>
+                                            <th class="p-4 font-medium">No. PO</th>
+                                            <th class="p-4 font-medium">Supplier</th>
+                                            <th class="p-4 font-medium text-center">Qty PO</th>
+                                            <th id="th-po-aksi" class="p-4 font-medium text-center hidden w-20">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-po-body" class="text-sm divide-y divide-gray-100">
+                                        <!-- JS Content -->
+                                    </tbody>
+                                </table>
+                                <div id="empty-po-msg" class="p-8 text-center text-gray-500">
+                                    Belum ada data Master PO yang dibuat.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: KEDATANGAN (INBOUND) -->
+                <div id="view-inbound" class="fade-in hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Penerimaan Pallet Baru</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Form Inbound -->
+                        <div class="lg:col-span-1 bg-white rounded-xl shadow-sm p-6 h-fit relative">
+                            <!-- Overlay Lock for unauthenticated users -->
+                            <div id="in-lock-overlay" class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                                <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                <p class="text-sm font-bold text-gray-600">Login untuk Menginput Data</p>
+                            </div>
+
+                            <h3 class="font-bold text-gray-700 mb-4 pb-2 border-b">Input Data Kedatangan</h3>
+                            <form id="form-inbound" onsubmit="handleInboundSubmit(event)" class="space-y-4">
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi SJA</label>
+                                    <select id="in-lokasi" required onchange="updateInboundPODropdown()" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition bg-white disabled:bg-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed">
+                                        <option value="" disabled selected>-- Pilih Lokasi --</option>
+                                        <option value="SJA SEPANJANG">SJA SEPANJANG</option>
+                                        <option value="SJA SEMARANG">SJA SEMARANG</option>
+                                        <option value="SJA SUKODONO">SJA SUKODONO</option>
+                                        <option value="SJA KARAWANG">SJA KARAWANG</option>
+                                    </select>
+                                </div>
+
+                                <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                    <label class="block text-sm font-semibold text-indigo-800 mb-1"><i class="fas fa-link mr-1"></i> Hubungkan dengan PO</label>
+                                    <select id="in-po" onchange="handleInboundPOChange()" class="w-full border border-indigo-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none transition bg-white shadow-sm font-medium">
+                                        <option value="">-- Pilih Lokasi Terlebih Dahulu --</option>
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kedatangan</label>
+                                    <input type="date" id="in-date" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
+                                    <input type="text" id="in-supplier" required placeholder="Contoh: PT. Kayu Jati" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div id="in-po-qty-container" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty di PO</label>
+                                    <input type="number" id="in-po-qty" class="w-full border border-gray-300 rounded-lg p-2.5 bg-gray-100 text-gray-600 outline-none" readonly>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Kode Batch Pengiriman</label>
+                                    <input type="text" id="in-batch" required placeholder="Contoh: BATCH-001" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition uppercase">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty Kedatangan Pallet</label>
+                                    <input type="number" id="in-qty" required min="1" placeholder="Jumlah pallet datang" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition" oninput="calculateOutstanding()">
+                                    <p id="in-outstanding-info" class="text-xs mt-1 hidden"></p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan (Opsional)</label>
+                                    <textarea id="in-notes" rows="2" placeholder="Catatan tambahan..." class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition"></textarea>
+                                </div>
+                                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 mt-2">
+                                    <i class="fas fa-save"></i> Simpan Kedatangan
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Table Inbound -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-fit max-h-[70vh]">
+                            <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                                <h3 class="font-bold text-gray-700">Riwayat Kedatangan</h3>
+                            </div>
+                            <div class="overflow-x-auto flex-1 p-0 relative">
+                                <!-- Lock Overlay -->
+                                <div id="in-table-lock" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center">
+                                    <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm font-bold text-gray-600">Login untuk melihat data</p>
+                                </div>
+                                <table class="w-full text-left border-collapse whitespace-nowrap">
+                                    <thead>
+                                        <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                            <th class="p-4 font-medium">Tgl</th>
+                                            <th class="p-4 font-medium">Lokasi</th>
+                                            <th class="p-4 font-medium">Supplier & PO</th>
+                                            <th class="p-4 font-medium">Batch</th>
+                                            <th class="p-4 font-medium text-right">Qty Datang</th>
+                                            <th class="p-4 font-medium">Keterangan</th>
+                                            <th id="th-in-aksi" class="p-4 font-medium text-center hidden w-20">Aksi</th>
+                                        </tr>
+                                        <!-- FILTER BAR INBOUND -->
+                                        <tr class="bg-white border-b border-gray-200">
+                                            <td class="p-2"><input type="text" id="filter-in-date" onkeyup="filterInboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                                            <td class="p-2"><input type="text" id="filter-in-lokasi" onkeyup="filterInboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                                            <td class="p-2"><input type="text" id="filter-in-supplier" onkeyup="filterInboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                                            <td class="p-2"><input type="text" id="filter-in-batch" onkeyup="filterInboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                                            <td class="p-2"></td>
+                                            <td class="p-2"><input type="text" id="filter-in-notes" onkeyup="filterInboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-blue-500 outline-none"></td>
+                                            <td id="td-in-aksi-filter" class="p-2 hidden"></td>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-inbound-body" class="text-sm divide-y divide-gray-100">
+                                        <!-- JS Content -->
+                                    </tbody>
+                                </table>
+                                <div id="empty-inbound-msg" class="p-8 text-center text-gray-500">
+                                    Belum ada data penerimaan pallet.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW: PENGELUARAN (OUTBOUND) -->
+                <div id="view-outbound" class="fade-in hidden">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Pengeluaran Pallet</h2>
+                    
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Form Outbound -->
+                        <div class="lg:col-span-1 bg-white rounded-xl shadow-sm p-6 h-fit relative">
+                            <!-- Overlay Lock for unauthenticated users -->
+                            <div id="out-lock-overlay" class="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center rounded-xl">
+                                <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                <p class="text-sm font-bold text-gray-600">Login untuk Menginput Data</p>
+                            </div>
+
+                            <h3 class="font-bold text-gray-700 mb-4 pb-2 border-b">Input Data Pengeluaran</h3>
+                            <form id="form-outbound" onsubmit="handleOutboundSubmit(event)" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pengeluaran</label>
+                                    <input type="date" id="out-date" required class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi SJA</label>
+                                    <select id="out-lokasi" required onchange="updateOutboundBatchDropdown()" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition bg-white disabled:bg-gray-200 disabled:text-gray-600 disabled:cursor-not-allowed">
+                                        <option value="" disabled selected>-- Pilih Lokasi --</option>
+                                        <option value="SJA SEPANJANG">SJA SEPANJANG</option>
+                                        <option value="SJA SEMARANG">SJA SEMARANG</option>
+                                        <option value="SJA SUKODONO">SJA SUKODONO</option>
+                                        <option value="SJA KARAWANG">SJA KARAWANG</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Kode Batch (Lokasi)</label>
+                                    <select id="out-batch" required onchange="updateMaxQty()" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition bg-white">
+                                        <option value="" disabled selected>-- Pilih Batch Tersedia --</option>
+                                        <!-- Options populated by JS based on available balance -->
+                                    </select>
+                                    <p id="out-stock-info" class="text-xs text-blue-600 mt-1 hidden">Sisa stok batch ini: <span id="out-max-qty-display" class="font-bold">0</span> pallet</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Qty Keluar</label>
+                                    <input type="number" id="out-qty" required min="1" placeholder="Jumlah pallet keluar" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan / Tujuan</label>
+                                    <textarea id="out-notes" rows="2" placeholder="Contoh: Pengiriman ke Pabrik B..." class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-amber-500 outline-none transition"></textarea>
+                                </div>
+                                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2 mt-2">
+                                    <i class="fas fa-paper-plane"></i> Proses Pengeluaran
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Table Outbound -->
+                        <div class="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-fit max-h-[70vh]">
+                            <div class="p-5 flex justify-between items-center bg-gray-50 border-b border-gray-100">
+                                <h3 class="font-bold text-gray-700">Riwayat Pengeluaran</h3>
+                            </div>
+                            <div class="overflow-x-auto flex-1 p-0 relative">
+                                <!-- Lock Overlay -->
+                                <div id="out-table-lock" class="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center">
+                                    <i class="fas fa-lock text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-sm font-bold text-gray-600">Login untuk melihat data</p>
+                                </div>
+                                <table class="w-full text-left border-collapse whitespace-nowrap">
+                                    <thead>
+                                        <tr class="bg-gray-100 text-gray-600 text-xs uppercase tracking-wider sticky top-0 z-10 shadow-sm">
+                                            <th class="p-4 font-medium">Tgl</th>
+                                            <th class="p-4 font-medium">Lokasi Asal</th>
+                                            <th class="p-4 font-medium">Batch</th>
+                                            <th class="p-4 font-medium text-right">Qty Keluar</th>
+                                            <th class="p-4 font-medium">Keterangan</th>
+                                            <th id="th-out-aksi" class="p-4 font-medium text-center hidden w-20">Aksi</th>
+                                        </tr>
+                                        <!-- FILTER BAR OUTBOUND -->
+                                        <tr class="bg-white border-b border-gray-200">
+                                            <td class="p-2"><input type="text" id="filter-out-date" onkeyup="filterOutboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-red-500 outline-none"></td>
+                                            <td class="p-2"><input type="text" id="filter-out-lokasi" onkeyup="filterOutboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-red-500 outline-none"></td>
+                                            <td class="p-2"><input type="text" id="filter-out-batch" onkeyup="filterOutboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-red-500 outline-none"></td>
+                                            <td class="p-2"></td>
+                                            <td class="p-2"><input type="text" id="filter-out-notes" onkeyup="filterOutboundTable()" placeholder="Cari..." class="w-full text-xs p-1 border rounded focus:ring-1 focus:ring-red-500 outline-none"></td>
+                                            <td id="td-out-aksi-filter" class="p-2 hidden"></td>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="table-outbound-body" class="text-sm divide-y divide-gray-100">
+                                        <!-- JS Content -->
+                                    </tbody>
+                                </table>
+                                <div id="empty-outbound-msg" class="p-8 text-center text-gray-500">
+                                    Belum ada data pengeluaran pallet.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MODULE SCRIPT UNTUK FIREBASE & LOGIKA -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, setDoc, doc, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES (MUST BE DECLARED FIRST) ---
+        let currentUser = null; 
+
+        // --- GLOBAL USER CREDENTIALS ---
+        const APP_USERS = {
+            "admin": { role: "admin", location: "ALL", pass: "Admin123", displayName: "Administrator" },
+            "purc_sepanjang": { role: "purchasing", location: "SJA SEPANJANG", pass: "Sepanjang123", displayName: "Purc. Sepanjang" },
+            "purc_karawang": { role: "purchasing", location: "SJA KARAWANG", pass: "Karawang123", displayName: "Purc. Karawang" },
+            "purc_sukodono": { role: "purchasing", location: "SJA SUKODONO", pass: "Sukodono123", displayName: "Purc. Sukodono" },
+            "purc_semarang": { role: "purchasing", location: "SJA SEMARANG", pass: "Semarang123", displayName: "Purc. Semarang" }
+        };
+
+        // --- FIREBASE INIT ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        let txCollection;
+
+        // --- GLOBAL STATE ---
+        let transactions = [];
+        let deletingTxId = null;
+        let paretoChartInstance = null; // Menyimpan instance chart
+        
+        // --- PAGINATION STATE ---
+        const ITEMS_PER_PAGE_PO = 10;
+        const ITEMS_PER_PAGE_DASH = 5;
+        let currentPOPage = 1;
+        let allFilteredPOs = [];
+        let currentDashInboundPage = 1;
+        let allFilteredDashInbounds = [];
+        let currentOutboundPage = 1;
+        let allFilteredOutbounds = [];
+
+        // Inisialisasi Saat Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('in-date').value = today;
+            document.getElementById('out-date').value = today;
+            document.getElementById('po-date').value = today;
+            
+            updateAuthUI(); // set initial locked UI for guests
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    console.log("Firebase Auth Success");
+                    
+                    txCollection = collection(db, 'artifacts', appId, 'public', 'data', 'pallet_transactions');
+                    
+                    // Inject Dummy Data if database is empty
+                    const snapshot = await getDocs(txCollection);
+                    if (snapshot.empty) {
+                        console.log("Database is empty, injecting dummy data...");
+                        const dummyPO = {
+                            type: "PO", date: "2026-07-15", lokasi: "SJA KARAWANG",
+                            supplier: "PT BMR", poNumber: "F260427", poQty: 66, timestamp: Date.now()
+                        };
+                        const dummyIn = {
+                            type: "IN", date: "2026-07-15", lokasi: "SJA KARAWANG",
+                            supplier: "PT BMR", po: "F260427", poQty: 66, batch: "BMR-001",
+                            qty: 54, notes: "Kedatangan parsial pertama", timestamp: Date.now() + 1000
+                        };
+                        await addDoc(txCollection, dummyPO);
+                        await addDoc(txCollection, dummyIn);
+                        console.log("Dummy data injected successfully.");
+                    }
+
+                    onSnapshot(txCollection, (snapshot) => {
+                        transactions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        updateUI();
+                    }, (error) => {
+                        console.error("Firestore error:", error);
+                        showToast("Gagal memuat data dari Cloud", "error");
+                    });
+
+                } catch (error) {
+                    console.error("Auth error:", error);
+                    showToast("Gagal terhubung ke Cloud", "error");
+                }
+            };
+
+            initAuth();
+        });
+
+        // --- NAVIGATION ---
+        function navigate(viewName) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-po').classList.add('hidden');
+            document.getElementById('view-inbound').classList.add('hidden');
+            document.getElementById('view-outbound').classList.add('hidden');
+            
+            document.getElementById('nav-dashboard').className = 'w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors';
+            document.getElementById('nav-po').className = 'w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors';
+            document.getElementById('nav-inbound').className = 'w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors';
+            document.getElementById('nav-outbound').className = 'w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-amber-700 transition-colors';
+
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            if(document.getElementById(`nav-${viewName}`)) {
+               document.getElementById(`nav-${viewName}`).className = 'w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-900 transition-colors font-semibold';
+            }
+            updateUI();
+        }
+
+        // --- AUTH LOGIC ---
+        function toggleLoginModal() {
+            const modal = document.getElementById('login-modal');
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                document.getElementById('login-username').value = '';
+                document.getElementById('login-password').value = '';
+                setTimeout(() => document.getElementById('login-username').focus(), 100);
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function handleLogin(e) {
+            if (e) e.preventDefault();
+            const u = document.getElementById('login-username').value.trim().toLowerCase();
+            const p = document.getElementById('login-password').value.trim();
+            
+            if (APP_USERS[u] && APP_USERS[u].pass === p) {
+                currentUser = { username: u, ...APP_USERS[u] };
+                toggleLoginModal();
+                updateAuthUI();
+                showToast(`Berhasil login sebagai ${APP_USERS[u].displayName}`, "success");
+            } else {
+                showToast("Username atau password salah!", "error");
+            }
+        }
+
+        function logoutUser() {
+            currentUser = null;
+            updateAuthUI();
+            navigate('dashboard'); // Redirect to dashboard to prevent inputting while logged out
+            showToast("Berhasil logout dari sistem", "success");
+        }
+
+        function applyLocationLock() {
+            // Apply locked location for purchasing users
+            const formSelects = ['po-lokasi', 'in-lokasi', 'out-lokasi'];
+            const filterDashboard = document.getElementById('dashboard-filter-lokasi');
+            
+            if (currentUser && currentUser.role === 'purchasing') {
+                // Lock forms to specific location
+                formSelects.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) {
+                        el.value = currentUser.location;
+                        el.disabled = true;
+                    }
+                });
+                // Default dashboard filter
+                if(filterDashboard) filterDashboard.value = currentUser.location;
+            } else {
+                // Admin or Guest
+                formSelects.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) {
+                        el.disabled = false;
+                        if(!currentUser) el.value = ''; // Reset if guest
+                    }
+                });
+                if(filterDashboard && !currentUser) filterDashboard.value = 'ALL';
+            }
+        }
+
+        function updateAuthUI() {
+            const btnLogin = document.getElementById('sidebar-login-btn');
+            const btnLogout = document.getElementById('sidebar-logout-btn');
+            const mBtnLogin = document.getElementById('mobile-login-btn');
+            const mBtnLogout = document.getElementById('mobile-logout-btn');
+            const usernameDisplay = document.getElementById('logout-username');
+            const roleDisplay = document.getElementById('current-user-role');
+            
+            // Admin Action Columns
+            const thInAksi = document.getElementById('th-in-aksi');
+            const thOutAksi = document.getElementById('th-out-aksi');
+            const thPoAksi = document.getElementById('th-po-aksi');
+            const tdInAksiFilter = document.getElementById('td-in-aksi-filter');
+            const tdOutAksiFilter = document.getElementById('td-out-aksi-filter');
+            const allAdminAksiCols = document.querySelectorAll('.th-admin-aksi');
+            const adminOnlyBtns = document.querySelectorAll('.admin-only-btn');
+            const btnReset = document.getElementById('btn-reset-data');
+
+            // Form Lock Overlays
+            const poLock = document.getElementById('po-lock-overlay');
+            const inLock = document.getElementById('in-lock-overlay');
+            const outLock = document.getElementById('out-lock-overlay');
+            const poTableLock = document.getElementById('po-table-lock');
+            const inTableLock = document.getElementById('in-table-lock');
+            const outTableLock = document.getElementById('out-table-lock');
+
+            if (currentUser) {
+                // LOGGED IN
+                if(btnLogin) btnLogin.classList.add('hidden');
+                if(btnLogout) btnLogout.classList.remove('hidden');
+                if(mBtnLogin) mBtnLogin.classList.add('hidden');
+                if(mBtnLogout) mBtnLogout.classList.remove('hidden');
+                if(usernameDisplay) usernameDisplay.textContent = currentUser.displayName;
+                if(roleDisplay) roleDisplay.textContent = currentUser.displayName;
+                
+                // Remove form locks
+                if(poLock) poLock.classList.add('hidden');
+                if(inLock) inLock.classList.add('hidden');
+                if(outLock) outLock.classList.add('hidden');
+                if(poTableLock) poTableLock.classList.add('hidden');
+                if(inTableLock) inTableLock.classList.add('hidden');
+                if(outTableLock) outTableLock.classList.add('hidden');
+
+                applyLocationLock();
+
+                // Admin specific UI
+                if (currentUser.role === 'admin') {
+                    if(thInAksi) thInAksi.classList.remove('hidden');
+                    if(thOutAksi) thOutAksi.classList.remove('hidden');
+                    if(tdInAksiFilter) tdInAksiFilter.classList.remove('hidden');
+                    if(tdOutAksiFilter) tdOutAksiFilter.classList.remove('hidden');
+                    if(thPoAksi) thPoAksi.classList.remove('hidden');
+                    allAdminAksiCols.forEach(col => col.classList.remove('hidden'));
+                    adminOnlyBtns.forEach(btn => btn.classList.remove('hidden'));
+                    if(btnReset) btnReset.classList.remove('hidden');
+                } else {
+                    // Purchasing specific UI (Hide Admin actions)
+                    if(thInAksi) thInAksi.classList.add('hidden');
+                    if(thOutAksi) thOutAksi.classList.add('hidden');
+                    if(tdInAksiFilter) tdInAksiFilter.classList.add('hidden');
+                    if(tdOutAksiFilter) tdOutAksiFilter.classList.add('hidden');
+                    if(thPoAksi) thPoAksi.classList.add('hidden');
+                    allAdminAksiCols.forEach(col => col.classList.add('hidden'));
+                    adminOnlyBtns.forEach(btn => btn.classList.add('hidden'));
+                    if(btnReset) btnReset.classList.add('hidden');
+                }
+            } else {
+                // LOGGED OUT / GUEST MODE
+                if(btnLogin) btnLogin.classList.remove('hidden');
+                if(btnLogout) btnLogout.classList.add('hidden');
+                if(mBtnLogin) mBtnLogin.classList.remove('hidden');
+                if(mBtnLogout) mBtnLogout.classList.add('hidden');
+                if(usernameDisplay) usernameDisplay.textContent = "";
+                if(roleDisplay) roleDisplay.textContent = "Tamu (Read-Only)";
+                
+                // Apply form locks
+                if(poLock) poLock.classList.remove('hidden');
+                if(inLock) inLock.classList.remove('hidden');
+                if(outLock) outLock.classList.remove('hidden');
+                if(poTableLock) poTableLock.classList.remove('hidden');
+                if(inTableLock) inTableLock.classList.remove('hidden');
+                if(outTableLock) outTableLock.classList.remove('hidden');
+
+                applyLocationLock();
+
+                // Hide Admin actions
+                if(thInAksi) thInAksi.classList.add('hidden');
+                if(thOutAksi) thOutAksi.classList.add('hidden');
+                if(tdInAksiFilter) tdInAksiFilter.classList.add('hidden');
+                if(tdOutAksiFilter) tdOutAksiFilter.classList.add('hidden');
+                if(thPoAksi) thPoAksi.classList.add('hidden');
+                allAdminAksiCols.forEach(col => col.classList.add('hidden'));
+                adminOnlyBtns.forEach(btn => btn.classList.add('hidden'));
+                if(btnReset) btnReset.classList.add('hidden');
+            }
+            
+            // Tampilkan Grafik Pareto HANYA jika filter di dashboard adalah "ALL"
+            const filterDashboard = document.getElementById('dashboard-filter-lokasi');
+            const paretoContainer = document.getElementById('pareto-chart-container');
+            if (filterDashboard && paretoContainer) {
+                if (filterDashboard.value === 'ALL') {
+                    paretoContainer.classList.remove('hidden');
+                    // Beri jeda sedikit agar container selesai di-render sebelum chart digambar
+                    setTimeout(renderParetoChart, 100);
+                } else {
+                    paretoContainer.classList.add('hidden');
+                }
+            }
+
+            updateUI(); 
+        }
+
+        // --- FILTER TABEL LOGIC ---
+        function filterInboundTable() {
+            const dateFilter = document.getElementById('filter-in-date').value.toLowerCase();
+            const lokasiFilter = document.getElementById('filter-in-lokasi').value.toLowerCase();
+            const supplierFilter = document.getElementById('filter-in-supplier').value.toLowerCase();
+            const batchFilter = document.getElementById('filter-in-batch').value.toLowerCase();
+            const notesFilter = document.getElementById('filter-in-notes').value.toLowerCase();
+
+            const tbody = document.getElementById('table-inbound-body');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const tdDate = row.cells[0]?.textContent.toLowerCase() || '';
+                const tdLokasi = row.cells[1]?.textContent.toLowerCase() || '';
+                const tdSupplier = row.cells[2]?.textContent.toLowerCase() || '';
+                const tdBatch = row.cells[3]?.textContent.toLowerCase() || '';
+                const tdNotes = row.cells[5]?.textContent.toLowerCase() || '';
+
+                if (tdDate.includes(dateFilter) &&
+                    tdLokasi.includes(lokasiFilter) &&
+                    tdSupplier.includes(supplierFilter) &&
+                    tdBatch.includes(batchFilter) &&
+                    tdNotes.includes(notesFilter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+
+        function filterOutboundTable() {
+            const dateFilter = document.getElementById('filter-out-date').value.toLowerCase();
+            const lokasiFilter = document.getElementById('filter-out-lokasi').value.toLowerCase();
+            const batchFilter = document.getElementById('filter-out-batch').value.toLowerCase();
+            const notesFilter = document.getElementById('filter-out-notes').value.toLowerCase();
+
+            const tbody = document.getElementById('table-outbound-body');
+            const rows = tbody.getElementsByTagName('tr');
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const tdDate = row.cells[0]?.textContent.toLowerCase() || '';
+                const tdLokasi = row.cells[1]?.textContent.toLowerCase() || '';
+                const tdBatch = row.cells[2]?.textContent.toLowerCase() || '';
+                const tdNotes = row.cells[4]?.textContent.toLowerCase() || '';
+
+                if (tdDate.includes(dateFilter) &&
+                    tdLokasi.includes(lokasiFilter) &&
+                    tdBatch.includes(batchFilter) &&
+                    tdNotes.includes(notesFilter)) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            }
+        }
+
+        // --- EDIT & DELETE LOGIC ---
+        function confirmDelete(id) {
+            deletingTxId = id;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            deletingTxId = null;
+            document.getElementById('confirm-modal').classList.add('hidden');
+        }
+
+        async function executeDelete() {
+            if (!deletingTxId || !txCollection || !auth.currentUser) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pallet_transactions', deletingTxId));
+                showToast("Data berhasil dihapus", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal menghapus data", "error");
+            } finally {
+                closeConfirmModal();
+            }
+        }
+        
+        function confirmResetAll() {
+            document.getElementById('reset-confirm-modal').classList.remove('hidden');
+        }
+
+        function closeResetConfirmModal() {
+            document.getElementById('reset-confirm-modal').classList.add('hidden');
+        }
+
+        async function executeResetAll() {
+            if (!txCollection || !auth.currentUser) return showToast("Menunggu koneksi cloud...", "error");
+            if (transactions.length === 0) {
+                closeResetConfirmModal();
+                return showToast("Data sudah kosong.", "success");
+            }
+            
+            showToast("Memproses penghapusan massal...", "success");
+            
+            try {
+                const promises = transactions.map(trx => 
+                    deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pallet_transactions', trx.id))
+                );
+                await Promise.all(promises);
+                
+                showToast("Seluruh data berhasil di-reset.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal mereset sebagian/seluruh data.", "error");
+            } finally {
+                closeResetConfirmModal();
+            }
+        }
+
+        function openEditModal(id) {
+            try {
+                const trx = transactions.find(t => t.id === id);
+                if (!trx) {
+                    showToast("Data tidak ditemukan!", "error");
+                    return;
+                }
+
+                const setVal = (elementId, value) => {
+                    const el = document.getElementById(elementId);
+                    if (el) el.value = value;
+                }
+
+                setVal('edit-id', trx.id);
+                setVal('edit-type', trx.type);
+                setVal('edit-date', trx.date || '');
+                setVal('edit-lokasi', trx.lokasi || '');
+                
+                const supplierContainer = document.getElementById('edit-supplier-container');
+                const batchContainer = document.getElementById('edit-batch-container');
+                const qtyContainer = document.getElementById('edit-qty-container');
+                const notesContainer = document.getElementById('edit-notes-container');
+
+                if (supplierContainer) supplierContainer.classList.add('hidden');
+                if (batchContainer) batchContainer.classList.remove('hidden');
+                if (qtyContainer) qtyContainer.classList.remove('hidden');
+                if (notesContainer) notesContainer.classList.remove('hidden');
+
+                setVal('edit-batch', trx.batch || '');
+                setVal('edit-qty', trx.qty || 1);
+                setVal('edit-notes', trx.notes || '');
+
+                if (trx.type === 'IN' || trx.type === 'PO') {
+                    if (supplierContainer) supplierContainer.classList.remove('hidden');
+                    setVal('edit-supplier', trx.supplier || '');
+                    setVal('edit-po', trx.po || trx.poNumber || '');
+                    setVal('edit-po-qty', trx.poQty || '');
+
+                    if(trx.type === 'PO') {
+                        if (batchContainer) batchContainer.classList.add('hidden');
+                        if (notesContainer) notesContainer.classList.add('hidden');
+                        if (qtyContainer) qtyContainer.classList.add('hidden'); // Sembunyikan Qty Transaksi khusus PO
+                        setVal('edit-po-qty', trx.poQty || 1); 
+                        setVal('edit-po', trx.poNumber || '');
+                    }
+                } else {
+                    setVal('edit-supplier', '');
+                    setVal('edit-po', '');
+                    setVal('edit-po-qty', '');
+                }
+
+                const modal = document.getElementById('edit-modal');
+                if (modal) modal.classList.remove('hidden');
+            } catch (error) {
+                console.error("Error opening edit modal:", error);
+                showToast("Terjadi kesalahan sistem saat memuat form", "error");
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        async function handleEditSubmit(e) {
+            e.preventDefault();
+            if (!auth.currentUser) return showToast("Tidak dapat menyimpan, belum terautentikasi.", "error");
+            try {
+                const idEl = document.getElementById('edit-id');
+                const typeEl = document.getElementById('edit-type');
+                if (!idEl || !typeEl) return;
+                
+                const id = idEl.value;
+                const type = typeEl.value;
+
+                const getVal = (elementId) => {
+                    const el = document.getElementById(elementId);
+                    return el ? el.value : '';
+                }
+
+                const updateData = {
+                    date: getVal('edit-date'),
+                    lokasi: getVal('edit-lokasi'),
+                };
+
+                if (type !== 'PO') {
+                    updateData.batch = getVal('edit-batch').toUpperCase().trim();
+                    updateData.qty = parseInt(getVal('edit-qty')) || 0;
+                    updateData.notes = getVal('edit-notes');
+                }
+
+                if (type === 'IN' || type === 'PO') {
+                    updateData.supplier = getVal('edit-supplier');
+                    const poVal = getVal('edit-po').toUpperCase().trim();
+                    const poQtyVal = parseInt(getVal('edit-po-qty')) || 0;
+                    
+                    if (type === 'IN') {
+                        updateData.po = poVal;
+                        updateData.poQty = poQtyVal;
+                    } else if (type === 'PO') {
+                        updateData.poNumber = poVal;
+                        updateData.poQty = poQtyVal;
+                    }
+                }
+
+                // Cascade Update: Jika Admin mengedit Master PO, otomatis update data riwayat kedatangan yang terkait
+                if (type === 'PO') {
+                    const originalTrx = transactions.find(t => t.id === id);
+                    if (originalTrx) {
+                        const oldPoNumber = originalTrx.poNumber;
+                        const newPoNumber = getVal('edit-po').toUpperCase().trim();
+                        
+                        if (oldPoNumber !== newPoNumber || originalTrx.poQty !== updateData.poQty || originalTrx.supplier !== updateData.supplier) {
+                            const linkedInbounds = transactions.filter(t => t.type === 'IN' && t.po === oldPoNumber);
+                            for (const inb of linkedInbounds) {
+                                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pallet_transactions', inb.id), {
+                                    po: newPoNumber,
+                                    poQty: updateData.poQty,
+                                    supplier: updateData.supplier
+                                });
+                            }
+                        }
+                    }
+                }
+
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'pallet_transactions', id), updateData);
+                showToast("Data berhasil diperbarui", "success");
+                closeEditModal();
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memperbarui data. Cek koneksi Anda.", "error");
+            }
+        }
+
+
+        // --- EVENT HANDLERS FORM ---
+
+        // 1. Submit Master PO
+        async function handlePOSubmit(e) {
+            e.preventDefault();
+            if (!currentUser) return showToast("Silakan login terlebih dahulu", "error");
+            if (!auth.currentUser) return showToast("Menunggu koneksi cloud...", "error");
+            
+            const date = document.getElementById('po-date').value;
+            const lokasi = document.getElementById('po-lokasi').value;
+            const supplier = document.getElementById('po-supplier').value;
+            const poNumber = document.getElementById('po-number').value.toUpperCase().trim();
+            const poQty = parseInt(document.getElementById('po-qty').value);
+
+            const existingPO = transactions.find(t => t.type === 'PO' && t.poNumber === poNumber);
+            if(existingPO) {
+                return showToast(`Nomor PO ${poNumber} sudah ada di sistem.`, "error");
+            }
+
+            const newTx = {
+                type: 'PO',
+                date,
+                lokasi,
+                supplier,
+                poNumber,
+                poQty,
+                timestamp: Date.now()
+            };
+
+            try {
+                await addDoc(txCollection, newTx);
+                document.getElementById('po-supplier').value = '';
+                document.getElementById('po-number').value = '';
+                document.getElementById('po-qty').value = '';
+                showToast(`Master PO ${poNumber} berhasil ditambahkan!`, 'success');
+            } catch (err) {
+                showToast("Gagal menyimpan ke Cloud", "error");
+                console.error(err);
+            }
+        }
+
+        // 2. Event OnChange Dropdown PO di Inbound
+        function handleInboundPOChange() {
+            const selectedPO = document.getElementById('in-po').value;
+            const supplierInput = document.getElementById('in-supplier');
+            const lokasiInput = document.getElementById('in-lokasi');
+            const qtyContainer = document.getElementById('in-po-qty-container');
+            const qtyInput = document.getElementById('in-po-qty');
+
+            if (selectedPO) {
+                const poData = transactions.find(t => t.type === 'PO' && t.poNumber === selectedPO);
+                if (poData) {
+                    supplierInput.value = poData.supplier;
+                    supplierInput.readOnly = true;
+                    supplierInput.classList.add('bg-gray-100', 'text-gray-600');
+                    
+                    // Only autofill location if user is admin (Purchasing location is locked)
+                    if(currentUser && currentUser.role === 'admin') {
+                        lokasiInput.value = poData.lokasi;
+                    }
+                    
+                    qtyContainer.classList.remove('hidden');
+                    qtyInput.value = poData.poQty;
+                }
+            } else {
+                supplierInput.value = '';
+                supplierInput.readOnly = false;
+                supplierInput.classList.remove('bg-gray-100', 'text-gray-600');
+                
+                qtyContainer.classList.add('hidden');
+                qtyInput.value = '';
+            }
+            calculateOutstanding();
+        }
+
+        // 3. Update Dropdown List PO (Difilter berdasarkan Lokasi)
+        function updateInboundPODropdown() {
+            const select = document.getElementById('in-po');
+            const lokasiSelected = document.getElementById('in-lokasi').value;
+            const currentVal = select.value;
+            
+            select.innerHTML = '<option value="">-- Penerimaan Tanpa PO / Manual --</option>';
+            
+            if (!lokasiSelected) {
+                 select.innerHTML = '<option value="">-- Pilih Lokasi Terlebih Dahulu --</option>';
+                 return;
+            }
+            
+            const pos = transactions.filter(t => t.type === 'PO' && t.lokasi === lokasiSelected).sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            pos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.poNumber;
+                
+                let received = 0;
+                transactions.forEach(trx => { if(trx.type === 'IN' && trx.po === p.poNumber) received += trx.qty });
+                const sisa = p.poQty - received;
+                
+                let text = `PO: ${p.poNumber} - ${p.supplier}`;
+                if (sisa > 0) text += ` (Sisa: ${sisa})`;
+                else if (sisa <= 0) text += ` (Selesai)`;
+                
+                opt.textContent = text;
+                select.appendChild(opt);
+            });
+            
+            if (currentVal && pos.find(p => p.poNumber === currentVal)) {
+                select.value = currentVal;
+            } else {
+                select.value = '';
+                handleInboundPOChange();
+            }
+        }
+
+        // 4. Submit Inbound
+        async function handleInboundSubmit(e) {
+            e.preventDefault();
+            if (!currentUser) return showToast("Silakan login terlebih dahulu", "error");
+            if (!auth.currentUser) return showToast("Menunggu koneksi cloud...", "error");
+            
+            const selectedPO = document.getElementById('in-po').value;
+            const poData = transactions.find(t => t.type === 'PO' && t.poNumber === selectedPO);
+
+            const lokasi = document.getElementById('in-lokasi').value;
+            const date = document.getElementById('in-date').value;
+            const supplier = document.getElementById('in-supplier').value;
+            const batch = document.getElementById('in-batch').value.toUpperCase().trim().replace(/\|/g, '-');
+            const qty = parseInt(document.getElementById('in-qty').value);
+            const notes = document.getElementById('in-notes').value;
+
+            const po = selectedPO || '';
+            const poQty = poData ? poData.poQty : 0;
+
+            const newTx = {
+                type: 'IN',
+                lokasi,
+                date,
+                supplier,
+                po,
+                poQty,
+                batch,
+                qty,
+                notes,
+                timestamp: Date.now()
+            };
+
+            try {
+                await addDoc(txCollection, newTx);
+                
+                let toastMsg = `Berhasil menerima ${qty} pallet (Batch ${batch}).`;
+                if (po) {
+                    let pastReceived = 0;
+                    transactions.forEach(trx => { if (trx.type === 'IN' && trx.po === po) pastReceived += trx.qty; });
+                    const outstanding = poQty - pastReceived - qty;
+                    if (outstanding > 0) toastMsg += ` Outstanding PO: ${outstanding} pallet lagi.`;
+                    else if (outstanding === 0) toastMsg += ` Status PO Lengkap!`;
+                }
+
+                document.getElementById('in-po').value = '';
+                // Don't reset location for purchasing, just let it stay locked
+                if(currentUser && currentUser.role === 'admin') document.getElementById('in-lokasi').value = '';
+                document.getElementById('in-supplier').value = '';
+                document.getElementById('in-supplier').readOnly = false;
+                document.getElementById('in-supplier').classList.remove('bg-gray-100', 'text-gray-600');
+                document.getElementById('in-po-qty-container').classList.add('hidden');
+                document.getElementById('in-po-qty').value = '';
+                document.getElementById('in-batch').value = '';
+                document.getElementById('in-qty').value = '';
+                document.getElementById('in-notes').value = '';
+                document.getElementById('in-outstanding-info').classList.add('hidden');
+                
+                showToast(toastMsg, 'success');
+            } catch (err) {
+                showToast("Gagal menyimpan ke Cloud", "error");
+                console.error(err);
+            }
+        }
+
+        // 5. Submit Outbound
+        async function handleOutboundSubmit(e) {
+            e.preventDefault();
+            if (!currentUser) return showToast("Silakan login terlebih dahulu", "error");
+            if (!auth.currentUser) return showToast("Menunggu koneksi cloud...", "error");
+            
+            const batchRaw = document.getElementById('out-batch').value;
+            if (!batchRaw) return showToast('Silakan pilih Kode Batch terlebih dahulu.', 'error');
+            
+            const [batch, lokasi] = batchRaw.split('|');
+            
+            const date = document.getElementById('out-date').value;
+            const qty = parseInt(document.getElementById('out-qty').value);
+            const notes = document.getElementById('out-notes').value;
+
+            if (batch === 'ALL_BATCHES') {
+                const balances = getStockBalanceFiltered(transactions);
+                const batchesToProcess = balances.filter(b => b.currentBalance > 0 && b.lokasi === lokasi);
+
+                if (batchesToProcess.length === 0) return showToast('Tidak ada stok tersisa di lokasi ini.', 'error');
+
+                try {
+                    let totalQtyProcessed = 0;
+                    for (const b of batchesToProcess) {
+                        const newTx = {
+                            type: 'OUT',
+                            lokasi: b.lokasi,
+                            date,
+                            batch: b.batch,
+                            qty: b.currentBalance, 
+                            notes: notes || 'Pengeluaran massal otomatis',
+                            timestamp: Date.now() + Math.random() 
+                        };
+                        await addDoc(txCollection, newTx);
+                        totalQtyProcessed += b.currentBalance;
+                    }
+
+                    if(currentUser && currentUser.role === 'admin') document.getElementById('out-lokasi').value = '';
+                    document.getElementById('out-batch').value = '';
+                    document.getElementById('out-qty').value = '';
+                    document.getElementById('out-qty').readOnly = false;
+                    document.getElementById('out-qty').classList.remove('bg-gray-100', 'text-gray-500');
+                    document.getElementById('out-notes').value = '';
+                    document.getElementById('out-stock-info').classList.add('hidden');
+                    showToast(`Berhasil mengeluarkan total ${totalQtyProcessed} pallet dari ${batchesToProcess.length} batch sekaligus!`, 'success');
+                } catch (err) {
+                    showToast("Gagal menyimpan pengeluaran massal ke Cloud", "error");
+                    console.error(err);
+                }
+            } else {
+                const balances = getStockBalanceFiltered(transactions);
+                const batchStock = balances.find(b => b.batch === batch && b.lokasi === lokasi);
+                
+                if (!batchStock || qty > batchStock.currentBalance) {
+                    return showToast(`Gagal! Sisa saldo Batch ${batch} di ${lokasi} hanya ${batchStock ? batchStock.currentBalance : 0} pallet.`, 'error');
+                }
+
+                const newTx = {
+                    type: 'OUT',
+                    lokasi: lokasi, 
+                    date,
+                    batch,
+                    qty,
+                    notes,
+                    timestamp: Date.now()
+                };
+
+                try {
+                    await addDoc(txCollection, newTx);
+                    if(currentUser && currentUser.role === 'admin') document.getElementById('out-lokasi').value = '';
+                    document.getElementById('out-batch').value = '';
+                    document.getElementById('out-qty').value = '';
+                    document.getElementById('out-notes').value = '';
+                    document.getElementById('out-stock-info').classList.add('hidden');
+                    showToast(`Berhasil mengeluarkan ${qty} pallet dari Batch ${batch}`, 'success');
+                } catch (err) {
+                    showToast("Gagal menyimpan ke Cloud", "error");
+                    console.error(err);
+                }
+            }
+        }
+
+        function calculateOutstanding() {
+            const selectedPO = document.getElementById('in-po').value;
+            const infoEl = document.getElementById('in-outstanding-info');
+            
+            if (!selectedPO) {
+                infoEl.classList.add('hidden');
+                return;
+            }
+
+            const poData = transactions.find(t => t.type === 'PO' && t.poNumber === selectedPO);
+            const poQty = poData ? poData.poQty : 0;
+            const incomingQty = parseInt(document.getElementById('in-qty').value) || 0;
+
+            if (poQty <= 0) {
+                infoEl.classList.add('hidden');
+                return;
+            }
+
+            let pastReceived = 0;
+            transactions.forEach(trx => { if (trx.type === 'IN' && trx.po === selectedPO) pastReceived += trx.qty; });
+            const outstanding = poQty - pastReceived - incomingQty;
+            
+            infoEl.classList.remove('hidden');
+            if (outstanding > 0) {
+                infoEl.className = "text-xs mt-1 font-semibold text-orange-600";
+                infoEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> Parsial: Sisa ${outstanding} pallet di PO ini`;
+            } else if (outstanding === 0) {
+                infoEl.className = "text-xs mt-1 font-semibold text-green-600";
+                infoEl.innerHTML = `<i class="fas fa-check-circle"></i> Pengiriman Lengkap (Selesai)`;
+            } else {
+                infoEl.className = "text-xs mt-1 font-semibold text-red-600";
+                infoEl.innerHTML = `<i class="fas fa-times-circle"></i> Kelebihan kirim: ${Math.abs(outstanding)} pallet!`;
+            }
+        }
+
+        // --- FILTER & UI LOGIC ---
+        function getFilteredTransactions() {
+            const filterEl = document.getElementById('dashboard-filter-lokasi');
+            const selected = filterEl ? filterEl.value : 'ALL';
+            if (selected === 'ALL') return transactions;
+            return transactions.filter(trx => trx.lokasi === selected);
+        }
+
+        function getStockBalanceFiltered(txData) {
+            const balanceMap = {};
+            txData.forEach(trx => {
+                if(trx.type === 'PO') return; 
+                
+                const loc = trx.lokasi || '-';
+                const batchCode = trx.batch || '-';
+                const key = `${batchCode}|${loc}`;
+                
+                if (!balanceMap[key]) {
+                    balanceMap[key] = { batch: batchCode, lokasi: loc, totalIn: 0, totalOut: 0, currentBalance: 0 };
+                }
+                
+                if (trx.type === 'IN') balanceMap[key].totalIn += (trx.qty || 0);
+                else if (trx.type === 'OUT') balanceMap[key].totalOut += (trx.qty || 0);
+                
+                balanceMap[key].currentBalance = balanceMap[key].totalIn - balanceMap[key].totalOut;
+            });
+            return Object.values(balanceMap);
+        }
+
+        function updateUI() {
+            renderDashboard();
+            renderPOTable();
+            renderInboundTable();
+            renderOutboundTable();
+            
+            // Tampilkan/Sembunyikan Grafik Pareto berdasarkan filter
+            const filterVal = document.getElementById('dashboard-filter-lokasi').value;
+            const paretoContainer = document.getElementById('pareto-chart-container');
+            if(paretoContainer) {
+                if(filterVal === 'ALL') {
+                    paretoContainer.classList.remove('hidden');
+                    renderParetoChart();
+                } else {
+                    paretoContainer.classList.add('hidden');
+                }
+            }
+        }
+
+        // --- CHART & PARETO LOGIC ---
+        function renderParetoChart() {
+            if (!transactions || transactions.length === 0) return;
+
+            // 1. Agregasi Data per Lokasi
+            const plantData = {};
+            transactions.forEach(trx => {
+                if (trx.type === 'PO') return; // Abaikan Master PO
+                
+                const loc = trx.lokasi || 'Tanpa Lokasi';
+                if (!plantData[loc]) {
+                    plantData[loc] = { in: 0, out: 0, totalAktivitas: 0 };
+                }
+                
+                if (trx.type === 'IN') {
+                    plantData[loc].in += (trx.qty || 0);
+                    plantData[loc].totalAktivitas += (trx.qty || 0);
+                } else if (trx.type === 'OUT') {
+                    plantData[loc].out += (trx.qty || 0);
+                    plantData[loc].totalAktivitas += (trx.qty || 0);
+                }
+            });
+
+            // 2. Konversi ke Array dan Urutkan dari aktivitas terbesar ke terkecil (Aturan Pareto)
+            const sortedPlants = Object.keys(plantData)
+                .map(loc => ({
+                    lokasi: loc,
+                    in: plantData[loc].in,
+                    out: plantData[loc].out,
+                    total: plantData[loc].totalAktivitas
+                }))
+                .sort((a, b) => b.total - a.total);
+
+            // 3. Hitung Persentase Kumulatif
+            const grandTotal = sortedPlants.reduce((sum, p) => sum + p.total, 0);
+            let cumulative = 0;
+            const labels = [];
+            const dataIn = [];
+            const dataOut = [];
+            const dataCumulativePct = [];
+
+            sortedPlants.forEach(p => {
+                labels.push(p.lokasi);
+                dataIn.push(p.in);
+                dataOut.push(p.out);
+                
+                cumulative += p.total;
+                const pct = grandTotal > 0 ? (cumulative / grandTotal) * 100 : 0;
+                dataCumulativePct.push(pct.toFixed(1));
+            });
+
+            // 4. Render Chart.js
+            const ctx = document.getElementById('paretoChart').getContext('2d');
+            
+            // Hancurkan chart lama jika ada agar tidak menumpuk
+            if (paretoChartInstance) {
+                paretoChartInstance.destroy();
+            }
+
+            paretoChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            type: 'line',
+                            label: 'Persentase Kumulatif (%)',
+                            data: dataCumulativePct,
+                            borderColor: '#f59e0b', // Amber-500
+                            backgroundColor: '#f59e0b',
+                            borderWidth: 2,
+                            yAxisID: 'y-pct',
+                            tension: 0.3,
+                            fill: false,
+                            marker: { size: 5 }
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Total Kedatangan (Pallet)',
+                            data: dataIn,
+                            backgroundColor: '#3b82f6', // Blue-500
+                            yAxisID: 'y',
+                            borderRadius: 4
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Total Pengeluaran (Pallet)',
+                            data: dataOut,
+                            backgroundColor: '#ef4444', // Red-500
+                            yAxisID: 'y',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: { family: "'Inter', sans-serif" }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y;
+                                        if (context.dataset.yAxisID === 'y-pct') {
+                                            label += '%';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Jumlah Pallet'
+                            },
+                            beginAtZero: true
+                        },
+                        'y-pct': {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Persentase (%)'
+                            },
+                            beginAtZero: true,
+                            max: 105, // Sedikit di atas 100 agar ada ruang bernafas
+                            grid: {
+                                drawOnChartArea: false, // Hanya tampilkan grid untuk axis kiri
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- DASHBOARD & TABLES RENDER LOGIC ---
+        function renderDashboard() {
+            const filteredData = getFilteredTransactions();
+            renderDashboardSummary(filteredData);
+            preparePOData(filteredData);
+            prepareDashInboundData(filteredData);
+            prepareOutboundData(filteredData);
+        }
+        
+        function renderDashboardSummary(filteredData) {
+            const balances = getStockBalanceFiltered(filteredData);
+            const tableBody = document.getElementById('batch-balance-table');
+            const emptyMsg = document.getElementById('empty-dashboard-msg');
+            
+            let totalIn = 0; let totalOut = 0;
+            tableBody.innerHTML = '';
+            
+            if (balances.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                balances.forEach(b => {
+                    totalIn += b.totalIn;
+                    totalOut += b.totalOut;
+                    const isLow = b.currentBalance === 0;
+                    const badgeClass = isLow ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700 font-bold';
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${b.lokasi}</span></td>
+                            <td class="p-4 font-medium text-gray-800 font-mono">${b.batch}</td>
+                            <td class="p-4 text-blue-600">+${b.totalIn}</td>
+                            <td class="p-4 text-red-600">-${b.totalOut}</td>
+                            <td class="p-4"><span class="px-3 py-1 rounded-full text-xs ${badgeClass}">${b.currentBalance} Pallet</span></td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+
+            const currentBalanceTotal = totalIn - totalOut;
+            document.getElementById('total-in').textContent = totalIn.toLocaleString('id-ID');
+            document.getElementById('total-out').textContent = totalOut.toLocaleString('id-ID');
+            document.getElementById('total-balance').textContent = currentBalanceTotal.toLocaleString('id-ID');
+            
+            const balanceEl = document.getElementById('total-balance');
+            balanceEl.className = `text-3xl font-bold ${currentBalanceTotal < 10 && currentBalanceTotal > 0 ? 'text-orange-500' : currentBalanceTotal === 0 ? 'text-red-500' : 'text-gray-800'}`;
+        }
+
+        // --- MASTER PO LIST TABLE ---
+        function renderPOTable() {
+            let pos = transactions.filter(t => t.type === 'PO');
+            
+            // Filter tabel khusus untuk PIC Purchasing sesuai lokasinya
+            if (currentUser && currentUser.role === 'purchasing') {
+                pos = pos.filter(t => t.lokasi === currentUser.location);
+            }
+            
+            pos.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            const tbody = document.getElementById('table-po-body');
+            const emptyMsg = document.getElementById('empty-po-msg');
+            tbody.innerHTML = '';
+            
+            if (pos.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                pos.forEach(trx => {
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        actionHtml = `
+                            <td class="p-4 text-center">
+                                <button onclick="openEditModal('${trx.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Master PO"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete('${trx.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Master PO"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        `;
+                    }
+                    
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-4">${formatDate(trx.date)}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${trx.lokasi || '-'}</span></td>
+                            <td class="p-4 font-mono font-medium text-indigo-700">${trx.poNumber}</td>
+                            <td class="p-4">${trx.supplier}</td>
+                            <td class="p-4 text-center font-bold text-gray-800">${trx.poQty}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        // --- PO PAGINATION LOGIC (DASHBOARD) ---
+        function preparePOData(filteredData) {
+            const poStatus = {};
+            
+            filteredData.forEach(trx => {
+                if (trx.type === 'PO') {
+                    poStatus[trx.poNumber] = { 
+                        po: trx.poNumber, 
+                        supplier: trx.supplier, 
+                        poQty: trx.poQty, 
+                        received: 0, 
+                        lokasi: trx.lokasi,
+                        datePO: trx.date,
+                        lastDateInbound: null,
+                        batch: [],
+                        lastTimestamp: trx.timestamp || 0
+                    };
+                }
+            });
+
+            filteredData.forEach(trx => {
+                if (trx.type === 'IN' && trx.po) {
+                    if (!poStatus[trx.po]) {
+                        poStatus[trx.po] = { 
+                            po: trx.po, 
+                            supplier: trx.supplier, 
+                            poQty: trx.poQty || 0, 
+                            received: 0, 
+                            lokasi: trx.lokasi,
+                            datePO: trx.date, 
+                            lastDateInbound: trx.date,
+                            batch: [],
+                            lastTimestamp: trx.timestamp || 0
+                        };
+                    }
+                    poStatus[trx.po].received += trx.qty;
+                    if(trx.batch && !poStatus[trx.po].batch.includes(trx.batch)) {
+                        poStatus[trx.po].batch.push(trx.batch);
+                    }
+                    if (!transactions.find(t=> t.type==='PO' && t.poNumber===trx.po) && trx.poQty > poStatus[trx.po].poQty) {
+                         poStatus[trx.po].poQty = trx.poQty;
+                    }
+                    
+                    const tStamp = trx.timestamp || 0;
+                    if (tStamp > poStatus[trx.po].lastTimestamp) {
+                        poStatus[trx.po].lastDateInbound = trx.date;
+                        poStatus[trx.po].lastTimestamp = tStamp;
+                    }
+                }
+            });
+
+            allFilteredPOs = Object.values(poStatus).sort((a, b) => {
+                const aOut = a.poQty - a.received; 
+                const bOut = b.poQty - b.received;
+                
+                if (aOut > 0 && bOut <= 0) return -1;
+                if (aOut <= 0 && bOut > 0) return 1;
+                
+                return b.lastTimestamp - a.lastTimestamp; 
+            });
+            
+            currentPOPage = 1; 
+            renderPOTablePage();
+        }
+
+        function renderPOTablePage() {
+            const outstandingTable = document.getElementById('outstanding-po-table');
+            const emptyOutstandingMsg = document.getElementById('empty-outstanding-msg');
+            const paginationControls = document.getElementById('po-pagination-controls');
+            const alertBox = document.getElementById('open-po-alert');
+            const alertTitle = document.getElementById('open-po-alert-title');
+            const alertList = document.getElementById('open-po-alert-list');
+            
+            outstandingTable.innerHTML = '';
+            alertList.innerHTML = '';
+
+            if (allFilteredPOs.length === 0) {
+                emptyOutstandingMsg.classList.remove('hidden');
+                paginationControls.classList.add('hidden');
+                alertBox.classList.add('hidden');
+            } else {
+                emptyOutstandingMsg.classList.add('hidden');
+                
+                const openPOs = allFilteredPOs.filter(p => (p.poQty - p.received) > 0);
+                
+                if (openPOs.length > 0) {
+                    alertBox.classList.remove('hidden');
+                    alertTitle.innerHTML = `Perhatian: Terdapat ${openPOs.length} PO yang masih berstatus OPEN (Kekurangan pallet).`;
+                    openPOs.forEach(p => {
+                        const sisa = p.poQty - p.received;
+                        const listItem = `<li><strong>${p.po}</strong> di lokasi <span class="font-semibold">${p.lokasi || '-'}</span> (Kurang ${sisa} pallet)</li>`;
+                        alertList.insertAdjacentHTML('beforeend', listItem);
+                    });
+                } else {
+                    alertBox.classList.add('hidden');
+                }
+
+                if (allFilteredPOs.length > ITEMS_PER_PAGE_PO) {
+                    paginationControls.classList.remove('hidden');
+                } else {
+                    paginationControls.classList.add('hidden');
+                }
+
+                const startIndex = (currentPOPage - 1) * ITEMS_PER_PAGE_PO;
+                const endIndex = startIndex + ITEMS_PER_PAGE_PO;
+                const poToDisplay = allFilteredPOs.slice(startIndex, endIndex);
+
+                poToDisplay.forEach(p => {
+                    const outstanding = p.poQty - p.received;
+                    let statusBadge = ''; let outstandingText = '';
+
+                    if (outstanding > 0) {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs bg-orange-100 text-orange-700 font-bold">Open</span>';
+                        outstandingText = `<span class="text-orange-600 font-bold">${outstanding} Pallet</span>`;
+                    } else if (outstanding === 0) {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs bg-green-100 text-green-700 font-bold">Closed</span>';
+                        outstandingText = `<span class="text-green-600 font-bold">0</span>`;
+                    } else {
+                        statusBadge = '<span class="px-3 py-1 rounded-full text-xs bg-red-100 text-red-700 font-bold">Over</span>';
+                        outstandingText = `<span class="text-red-600 font-bold">Lebih ${Math.abs(outstanding)}</span>`;
+                    }
+
+                    const originalPOTx = transactions.find(t => t.type === 'PO' && t.poNumber === p.po);
+                    const poId = originalPOTx ? originalPOTx.id : '';
+
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        if (poId) {
+                            actionHtml = `
+                                <td class="p-4 text-center">
+                                    <button onclick="openEditModal('${poId}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Master PO"><i class="fas fa-edit"></i></button>
+                                    <button onclick="confirmDelete('${poId}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Master PO"><i class="fas fa-trash-alt"></i></button>
+                                </td>
+                            `;
+                        } else {
+                            actionHtml = `<td class="p-4 text-center text-xs text-gray-400 italic font-medium">Data Inbound<br>(Tanpa Master PO)</td>`;
+                        }
+                    }
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="p-4 text-gray-600">${formatDate(p.datePO || p.lastDateInbound)}</td>
+                            <td class="p-4 font-medium text-gray-800 font-mono">${p.po}</td>
+                            <td class="p-4 text-gray-600">${p.supplier}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${p.lokasi || '-'}</span></td>
+                            <td class="p-4 text-center font-semibold bg-gray-50">${p.poQty}</td>
+                            <td class="p-4 text-center text-blue-600 font-bold bg-blue-50/30">${p.received}</td>
+                            <td class="p-4 text-center">${outstandingText}</td>
+                            <td class="p-4 text-center">${statusBadge}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    outstandingTable.insertAdjacentHTML('beforeend', row);
+                });
+                
+                updatePaginationUI('po');
+            }
+        }
+        
+        function changePOPage(direction) {
+            const totalPages = Math.ceil(allFilteredPOs.length / ITEMS_PER_PAGE_PO);
+            currentPOPage += direction;
+            if (currentPOPage < 1) currentPOPage = 1;
+            if (currentPOPage > totalPages) currentPOPage = totalPages;
+            renderPOTablePage();
+        }
+
+        // --- INBOUND PAGINATION LOGIC (DASHBOARD) ---
+        function prepareDashInboundData(filteredData) {
+            allFilteredDashInbounds = filteredData
+                .filter(t => t.type === 'IN')
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                
+            currentDashInboundPage = 1;
+            renderDashInboundTablePage();
+        }
+        
+        function renderDashInboundTablePage() {
+            const tbody = document.getElementById('dashboard-recent-inbound-table');
+            const emptyMsg = document.getElementById('empty-recent-inbound-msg');
+            const paginationControls = document.getElementById('dash-inbound-pagination-controls');
+            
+            tbody.innerHTML = '';
+
+            if (allFilteredDashInbounds.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                paginationControls.classList.add('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                
+                if (allFilteredDashInbounds.length > ITEMS_PER_PAGE_DASH) {
+                    paginationControls.classList.remove('hidden');
+                } else {
+                    paginationControls.classList.add('hidden');
+                }
+
+                const startIndex = (currentDashInboundPage - 1) * ITEMS_PER_PAGE_DASH;
+                const endIndex = startIndex + ITEMS_PER_PAGE_DASH;
+                const inboundsToDisplay = allFilteredDashInbounds.slice(startIndex, endIndex);
+
+                inboundsToDisplay.forEach(trx => {
+                    const poText = trx.po ? `<br><span class="text-xs text-indigo-600 font-bold border border-indigo-200 bg-indigo-50 px-1 rounded inline-block mt-1">PO: ${trx.po}</span>` : '';
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        actionHtml = `
+                            <td class="p-4 text-center">
+                                <button onclick="openEditModal('${trx.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Data"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete('${trx.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        `;
+                    }
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="p-4 text-gray-600">${formatDate(trx.date)}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${trx.lokasi || '-'}</span></td>
+                            <td class="p-4 text-gray-800">${trx.supplier || '-'}${poText}</td>
+                            <td class="p-4 font-medium text-gray-800 font-mono"><span class="bg-gray-200 px-2 py-1 rounded text-xs">${trx.batch}</span></td>
+                            <td class="p-4 text-right font-bold text-blue-600">+${trx.qty}</td>
+                            <td class="p-4 text-gray-500 truncate max-w-[150px]" title="${trx.notes}">${trx.notes || '-'}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+                
+                updatePaginationUI('dash-inbound');
+            }
+        }
+        
+        function changeDashInboundPage(direction) {
+            const totalPages = Math.ceil(allFilteredDashInbounds.length / ITEMS_PER_PAGE_DASH);
+            currentDashInboundPage += direction;
+            if (currentDashInboundPage < 1) currentDashInboundPage = 1;
+            if (currentDashInboundPage > totalPages) currentDashInboundPage = totalPages;
+            renderDashInboundTablePage();
+        }
+
+        // --- OUTBOUND PAGINATION LOGIC (DASHBOARD) ---
+        function prepareOutboundData(filteredData) {
+            allFilteredOutbounds = filteredData
+                .filter(t => t.type === 'OUT')
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                
+            currentOutboundPage = 1;
+            renderOutboundTablePage();
+        }
+        
+        function renderOutboundTablePage() {
+            const tbody = document.getElementById('dashboard-recent-outbound-table');
+            const emptyMsg = document.getElementById('empty-recent-outbound-msg');
+            const paginationControls = document.getElementById('outbound-pagination-controls');
+            
+            tbody.innerHTML = '';
+
+            if (allFilteredOutbounds.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                paginationControls.classList.add('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                
+                if (allFilteredOutbounds.length > ITEMS_PER_PAGE_DASH) {
+                    paginationControls.classList.remove('hidden');
+                } else {
+                    paginationControls.classList.add('hidden');
+                }
+
+                const startIndex = (currentOutboundPage - 1) * ITEMS_PER_PAGE_DASH;
+                const endIndex = startIndex + ITEMS_PER_PAGE_DASH;
+                const outboundsToDisplay = allFilteredOutbounds.slice(startIndex, endIndex);
+
+                outboundsToDisplay.forEach(trx => {
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        actionHtml = `
+                            <td class="p-4 text-center">
+                                <button onclick="openEditModal('${trx.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Data"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete('${trx.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        `;
+                    }
+
+                    const row = `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="p-4 text-gray-600">${formatDate(trx.date)}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${trx.lokasi || '-'}</span></td>
+                            <td class="p-4 font-medium text-gray-800 font-mono"><span class="bg-gray-200 px-2 py-1 rounded text-xs">${trx.batch}</span></td>
+                            <td class="p-4 text-right font-bold text-red-600">-${trx.qty}</td>
+                            <td class="p-4 text-gray-500 truncate max-w-[200px]" title="${trx.notes}">${trx.notes || '-'}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+                
+                updatePaginationUI('outbound');
+            }
+        }
+        
+        function changeOutboundPage(direction) {
+            const totalPages = Math.ceil(allFilteredOutbounds.length / ITEMS_PER_PAGE_DASH);
+            currentOutboundPage += direction;
+            if (currentOutboundPage < 1) currentOutboundPage = 1;
+            if (currentOutboundPage > totalPages) currentOutboundPage = totalPages;
+            renderOutboundTablePage();
+        }
+
+        function updatePaginationUI(type) {
+            let totalItems, currentPage, limit;
+            if (type === 'po') {
+                totalItems = allFilteredPOs.length;
+                currentPage = currentPOPage;
+                limit = ITEMS_PER_PAGE_PO;
+            } else if (type === 'dash-inbound') {
+                totalItems = allFilteredDashInbounds.length;
+                currentPage = currentDashInboundPage;
+                limit = ITEMS_PER_PAGE_DASH;
+            } else if (type === 'outbound') {
+                totalItems = allFilteredOutbounds.length;
+                currentPage = currentOutboundPage;
+                limit = ITEMS_PER_PAGE_DASH;
+            }
+
+            const totalPages = Math.ceil(totalItems / limit);
+            let startIndex = (currentPage - 1) * limit + 1;
+            let endIndex = startIndex + limit - 1;
+            if (endIndex > totalItems) endIndex = totalItems;
+            
+            if (totalItems === 0) {
+                startIndex = 0;
+                endIndex = 0;
+            }
+
+            document.getElementById(`${type}-page-info`).textContent = `Menampilkan ${startIndex}-${endIndex} dari ${totalItems} data`;
+
+            const prevBtn = document.getElementById(`${type}-prev-btn`);
+            const nextBtn = document.getElementById(`${type}-next-btn`);
+
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages || totalPages === 0;
+        }
+
+        // --- FULL TABLES RENDER (TABS IN/OUT) ---
+        function renderInboundTable() {
+            let inbounds = transactions.filter(t => t.type === 'IN');
+            
+            // Filter tabel khusus untuk PIC Purchasing sesuai lokasinya
+            if (currentUser && currentUser.role === 'purchasing') {
+                inbounds = inbounds.filter(t => t.lokasi === currentUser.location);
+            }
+            
+            inbounds.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            const tbody = document.getElementById('table-inbound-body');
+            const emptyMsg = document.getElementById('empty-inbound-msg');
+            tbody.innerHTML = '';
+            
+            if (inbounds.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                inbounds.forEach(trx => {
+                    const poText = trx.po ? `<br><span class="text-xs text-indigo-600 font-bold border border-indigo-200 bg-indigo-50 px-1 rounded inline-block mt-1">PO: ${trx.po}</span>` : '';
+                    
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        actionHtml = `
+                            <td class="p-4 text-center">
+                                <button onclick="openEditModal('${trx.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Data"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete('${trx.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        `;
+                    }
+                    
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-4">${formatDate(trx.date)}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${trx.lokasi || '-'}</span></td>
+                            <td class="p-4">${trx.supplier}${poText}</td>
+                            <td class="p-4"><span class="bg-gray-200 px-2 py-1 rounded text-xs font-mono">${trx.batch}</span></td>
+                            <td class="p-4 text-right font-bold text-blue-600">+${trx.qty}</td>
+                            <td class="p-4 text-gray-500 truncate max-w-[150px]" title="${trx.notes}">${trx.notes || '-'}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        function renderOutboundTable() {
+            let outbounds = transactions.filter(t => t.type === 'OUT');
+            
+            // Filter tabel khusus untuk PIC Purchasing sesuai lokasinya
+            if (currentUser && currentUser.role === 'purchasing') {
+                outbounds = outbounds.filter(t => t.lokasi === currentUser.location);
+            }
+            
+            outbounds.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            
+            const tbody = document.getElementById('table-outbound-body');
+            const emptyMsg = document.getElementById('empty-outbound-msg');
+            tbody.innerHTML = '';
+            
+            if (outbounds.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                outbounds.forEach(trx => {
+                    let actionHtml = '';
+                    if (currentUser && currentUser.role === 'admin') {
+                        actionHtml = `
+                            <td class="p-4 text-center">
+                                <button onclick="openEditModal('${trx.id}')" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition mr-1" title="Edit Data"><i class="fas fa-edit"></i></button>
+                                <button onclick="confirmDelete('${trx.id}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>
+                            </td>
+                        `;
+                    }
+
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-4">${formatDate(trx.date)}</td>
+                            <td class="p-4"><span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-xs font-bold">${trx.lokasi || '-'}</span></td>
+                            <td class="p-4"><span class="bg-gray-200 px-2 py-1 rounded text-xs font-mono">${trx.batch}</span></td>
+                            <td class="p-4 text-right font-bold text-red-600">-${trx.qty}</td>
+                            <td class="p-4 text-gray-500 truncate max-w-[200px]" title="${trx.notes}">${trx.notes || '-'}</td>
+                            ${actionHtml}
+                        </tr>
+                    `;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        }
+
+        function updateOutboundBatchDropdown() {
+            const select = document.getElementById('out-batch');
+            const lokasiSelect = document.getElementById('out-lokasi').value;
+            const currentSelection = select.value;
+            select.innerHTML = '<option value="" disabled selected>-- Pilih Batch Tersedia --</option>';
+            
+            const balances = getStockBalanceFiltered(transactions);
+            let optionFound = false;
+            let totalAvailable = 0;
+            let batchCount = 0;
+
+            balances.forEach(b => {
+                if (b.currentBalance > 0 && (!lokasiSelect || b.lokasi === lokasiSelect)) {
+                    totalAvailable += b.currentBalance;
+                    batchCount++;
+                }
+            });
+
+            if (batchCount > 1 && lokasiSelect) {
+                const optionAll = document.createElement('option');
+                optionAll.value = `ALL_BATCHES|${lokasiSelect}`;
+                optionAll.textContent = `-- KELUARKAN SEMUA BATCH SEKALIGUS (Total: ${totalAvailable}) --`;
+                optionAll.className = "font-bold bg-blue-50 text-blue-700";
+                select.appendChild(optionAll);
+                if (`ALL_BATCHES|${lokasiSelect}` === currentSelection) optionFound = true;
+            }
+
+            balances.forEach(b => {
+                if (b.currentBalance > 0 && (!lokasiSelect || b.lokasi === lokasiSelect)) {
+                    const option = document.createElement('option');
+                    option.value = `${b.batch}|${b.lokasi}`;
+                    const locLabel = lokasiSelect ? '' : ` - ${b.lokasi}`;
+                    option.textContent = `${b.batch}${locLabel} (Sisa: ${b.currentBalance})`;
+                    select.appendChild(option);
+                    
+                    if (option.value === currentSelection) optionFound = true;
+                }
+            });
+
+            if (optionFound) select.value = currentSelection;
+            else {
+                document.getElementById('out-stock-info').classList.add('hidden');
+                document.getElementById('out-qty').removeAttribute('max');
+                document.getElementById('out-qty').readOnly = false;
+                document.getElementById('out-qty').classList.remove('bg-gray-100', 'text-gray-500');
+                document.getElementById('out-qty').value = '';
+            }
+        }
+
+        function updateMaxQty() {
+            const batchSelect = document.getElementById('out-batch');
+            const qtyInput = document.getElementById('out-qty');
+            const stockInfo = document.getElementById('out-stock-info');
+            const stockDisplay = document.getElementById('out-max-qty-display');
+            const lokasiSelect = document.getElementById('out-lokasi');
+            
+            const selectedValue = batchSelect.value;
+            
+            if (selectedValue) {
+                const [selectedBatch, selectedLokasi] = selectedValue.split('|');
+                
+                // Only allow changing location dropdown if not locked by purchasing role
+                if (lokasiSelect.value !== selectedLokasi && (!currentUser || currentUser.role === 'admin')) {
+                    lokasiSelect.value = selectedLokasi;
+                }
+
+                if (selectedBatch === 'ALL_BATCHES') {
+                    const balances = getStockBalanceFiltered(transactions);
+                    let totalAvailable = 0;
+                    balances.forEach(b => {
+                        if (b.currentBalance > 0 && b.lokasi === selectedLokasi) {
+                            totalAvailable += b.currentBalance;
+                        }
+                    });
+                    
+                    qtyInput.max = totalAvailable;
+                    qtyInput.value = totalAvailable;
+                    qtyInput.readOnly = true;
+                    qtyInput.classList.add('bg-gray-100', 'text-gray-500');
+                    stockInfo.innerHTML = `Sisa stok gabungan: <span id="out-max-qty-display" class="font-bold">${totalAvailable}</span> pallet. <br><span class="text-orange-600 font-semibold">*Sistem akan mengeluarkan semua sisa pallet di lokasi ini sekaligus.</span>`;
+                    stockInfo.classList.remove('hidden');
+                } else {
+                    qtyInput.readOnly = false;
+                    qtyInput.classList.remove('bg-gray-100', 'text-gray-500');
+                    qtyInput.value = '';
+
+                    const balances = getStockBalanceFiltered(transactions);
+                    const batchStock = balances.find(b => b.batch === selectedBatch && b.lokasi === selectedLokasi);
+                    const currentBalance = batchStock ? batchStock.currentBalance : 0;
+                    
+                    qtyInput.max = currentBalance;
+                    stockInfo.innerHTML = `Sisa stok batch ini: <span id="out-max-qty-display" class="font-bold">${currentBalance}</span> pallet`;
+                    stockInfo.classList.remove('hidden');
+                }
+            } else {
+                qtyInput.removeAttribute('max');
+                qtyInput.readOnly = false;
+                qtyInput.classList.remove('bg-gray-100', 'text-gray-500');
+                stockInfo.classList.add('hidden');
+            }
+        }
+
+        // --- UTILS & BACKUP RESTORE ---
+        function formatDate(dateStr) {
+            if(!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if(parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-green-600' : 'bg-red-600';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+            
+            toast.className = `${bgClass} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 transform transition-all duration-300 translate-x-full opacity-0`;
+            toast.innerHTML = `<i class="fas ${icon}"></i><span class="font-medium text-sm">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function backupData() {
+            if (transactions.length === 0) return showToast("Tidak ada data untuk dibackup.", "error");
+            const dataStr = JSON.stringify(transactions, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Backup_StokPallet_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("Backup data berhasil diunduh.", "success");
+        }
+
+        function restoreData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (!txCollection) return showToast("Gagal: Koneksi ke Cloud belum siap.", "error");
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedData)) throw new Error("Format tidak valid");
+                    showToast("Memulai restore data ke Cloud, mohon tunggu...", "success");
+                    let successCount = 0;
+                    
+                    for (const item of importedData) {
+                        if (!transactions.find(t => t.id === item.id)) {
+                            const docId = item.id || Date.now().toString() + Math.random().toString().slice(2,8);
+                            const docRef = doc(txCollection, docId);
+                            const { id, ...dataToSave } = item;
+                            await setDoc(docRef, dataToSave);
+                            successCount++;
+                        }
+                    }
+                    showToast(`Restore Cloud selesai. ${successCount} data baru berhasil ditambahkan!`, "success");
+                    event.target.value = '';
+                } catch (error) {
+                    console.error(error);
+                    showToast("Gagal melakukan restore. Pastikan file berformat JSON yang valid.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- EXPORT TO WINDOW ---
+        window.navigate = navigate;
+        window.handlePOSubmit = handlePOSubmit;
+        window.handleInboundSubmit = handleInboundSubmit;
+        window.handleOutboundSubmit = handleOutboundSubmit;
+        window.handleInboundPOChange = handleInboundPOChange;
+        window.updateInboundPODropdown = updateInboundPODropdown;
+        window.updateOutboundBatchDropdown = updateOutboundBatchDropdown;
+        window.updateMaxQty = updateMaxQty;
+        window.calculateOutstanding = calculateOutstanding;
+        window.updateUI = updateUI;
+        window.backupData = backupData;
+        window.restoreData = restoreData;
+        window.changePOPage = changePOPage;
+        window.changeDashInboundPage = changeDashInboundPage;
+        window.changeOutboundPage = changeOutboundPage;
+        window.toggleLoginModal = toggleLoginModal;
+        window.handleLogin = handleLogin;
+        window.logoutUser = logoutUser;
+        window.confirmDelete = confirmDelete;
+        window.closeConfirmModal = closeConfirmModal;
+        window.executeDelete = executeDelete;
+        window.confirmResetAll = confirmResetAll;
+        window.closeResetConfirmModal = closeResetConfirmModal;
+        window.executeResetAll = executeResetAll;
+        window.openEditModal = openEditModal;
+        window.closeEditModal = closeEditModal;
+        window.handleEditSubmit = handleEditSubmit;
+        window.filterInboundTable = filterInboundTable;
+        window.filterOutboundTable = filterOutboundTable;
+        window.renderParetoChart = renderParetoChart;
+
+    </script>
+</body>
+</html>

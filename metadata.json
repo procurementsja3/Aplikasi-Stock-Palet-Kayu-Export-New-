@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Monitoring Stok Pallet",
+  "description": "Sistem monitoring inventaris stok pallet kayu PT SJA lintas plant (Sepanjang, Semarang, Sukodono, Karawang), integrasi PO Procurement, penerimaan kedatangan, pencatatan pengeluaran, dan visualisasi grafik Pareto.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
