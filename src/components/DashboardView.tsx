@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import {
   Transaction,
+  InboundTransaction,
+  OutboundTransaction,
   LocationType,
   AppUser,
   POStatusItem,
@@ -56,10 +58,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [inboundPage, setInboundPage] = useState(1);
   const [outboundPage, setOutboundPage] = useState(1);
 
-  // Filter transactions based on selected location
+  // Filter transactions based on selected location (flexible matching)
   const filteredTransactions = useMemo(() => {
-    if (selectedLocation === 'ALL') return transactions;
-    return transactions.filter((t) => t.lokasi === selectedLocation);
+    if (!selectedLocation || selectedLocation === 'ALL') return transactions;
+    const target = selectedLocation.trim().toUpperCase();
+    return transactions.filter((t) => {
+      const loc = String(t.lokasi || '').trim().toUpperCase();
+      return loc === target || loc.replace('SJA ', '') === target.replace('SJA ', '');
+    });
   }, [transactions, selectedLocation]);
 
   // Calculate stock balance grouped by Batch + Lokasi
@@ -67,10 +73,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const map: Record<string, BatchBalance> = {};
 
     filteredTransactions.forEach((trx) => {
-      if (trx.type === 'PO') return;
+      const trxType = String(trx.type || '').toUpperCase();
+      if (trxType === 'PO') return;
 
-      const loc = trx.lokasi || ('-' as LocationType);
-      const batchCode = trx.batch || '-';
+      const item = trx as InboundTransaction | OutboundTransaction;
+      const loc = item.lokasi || ('-' as LocationType);
+      const batchCode = item.batch || '-';
       const key = `${batchCode}|${loc}`;
 
       if (!map[key]) {
@@ -83,10 +91,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         };
       }
 
-      if (trx.type === 'IN') {
-        map[key].totalIn += trx.qty || 0;
-      } else if (trx.type === 'OUT') {
-        map[key].totalOut += trx.qty || 0;
+      const qty = Number(item.qty) || 0;
+      if (trxType === 'IN') {
+        map[key].totalIn += qty;
+      } else if (trxType === 'OUT') {
+        map[key].totalOut += qty;
       }
 
       map[key].currentBalance = map[key].totalIn - map[key].totalOut;
