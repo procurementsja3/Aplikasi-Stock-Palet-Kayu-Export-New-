@@ -154,7 +154,7 @@ export default function App() {
     showToast('Berhasil logout dari sistem.', 'info');
   };
 
-  // Add PO
+  // Add PO (Otomatis tersimpan ke LocalStorage & IndexedDB)
   const handleAddPO = (newPO: Omit<POTransaction, 'id' | 'timestamp'>) => {
     const existing = transactions.find(
       (t) => t.type === 'PO' && t.poNumber === newPO.poNumber
@@ -170,11 +170,15 @@ export default function App() {
       timestamp: Date.now(),
     };
 
-    setTransactions((prev) => [created, ...prev]);
-    showToast(`Master PO ${created.poNumber} berhasil ditambahkan!`, 'success');
+    setTransactions((prev) => {
+      const next = [created, ...prev];
+      persistAllTransactions(next);
+      return next;
+    });
+    showToast(`Master PO ${created.poNumber} berhasil ditambahkan & tersimpan otomatis!`, 'success');
   };
 
-  // Add Inbound
+  // Add Inbound (Otomatis tersimpan ke LocalStorage & IndexedDB)
   const handleAddInbound = (newInb: Omit<InboundTransaction, 'id' | 'timestamp'>) => {
     const created: InboundTransaction = {
       ...newInb,
@@ -182,9 +186,13 @@ export default function App() {
       timestamp: Date.now(),
     };
 
-    setTransactions((prev) => [created, ...prev]);
+    setTransactions((prev) => {
+      const next = [created, ...prev];
+      persistAllTransactions(next);
+      return next;
+    });
 
-    let msg = `Berhasil menerima ${created.qty} pallet (Batch ${created.batch}).`;
+    let msg = `Penerimaan ${created.qty} palet (Batch ${created.batch}) berhasil & tersimpan otomatis.`;
     if (created.po) {
       const poObj = transactions.find(
         (t): t is POTransaction => t.type === 'PO' && t.poNumber === created.po
@@ -196,7 +204,7 @@ export default function App() {
         });
         const remaining = poObj.poQty - pastRec - created.qty;
         if (remaining > 0) {
-          msg += ` Sisa PO: ${remaining} pallet lagi.`;
+          msg += ` Sisa PO: ${remaining} palet lagi.`;
         } else if (remaining === 0) {
           msg += ` PO sudah terpenuhi lengkap!`;
         }
@@ -205,7 +213,7 @@ export default function App() {
     showToast(msg, 'success');
   };
 
-  // Add Single Outbound
+  // Add Single Outbound (Otomatis tersimpan ke LocalStorage & IndexedDB)
   const handleAddOutbound = (newOutb: Omit<OutboundTransaction, 'id' | 'timestamp'>) => {
     const created: OutboundTransaction = {
       ...newOutb,
@@ -213,14 +221,18 @@ export default function App() {
       timestamp: Date.now(),
     };
 
-    setTransactions((prev) => [created, ...prev]);
+    setTransactions((prev) => {
+      const next = [created, ...prev];
+      persistAllTransactions(next);
+      return next;
+    });
     showToast(
-      `Berhasil mengeluarkan ${created.qty} pallet dari Batch ${created.batch}.`,
+      `Pengeluaran ${created.qty} palet dari Batch ${created.batch} berhasil & tersimpan otomatis.`,
       'success'
     );
   };
 
-  // Add Bulk Outbound
+  // Add Bulk Outbound (Otomatis tersimpan ke LocalStorage & IndexedDB)
   const handleAddBulkOutbound = (
     items: Omit<OutboundTransaction, 'id' | 'timestamp'>[]
   ) => {
@@ -232,9 +244,13 @@ export default function App() {
 
     const totalQty = items.reduce((acc, it) => acc + it.qty, 0);
 
-    setTransactions((prev) => [...createdItems, ...prev]);
+    setTransactions((prev) => {
+      const next = [...createdItems, ...prev];
+      persistAllTransactions(next);
+      return next;
+    });
     showToast(
-      `Berhasil mengeluarkan total ${totalQty} pallet dari ${items.length} batch sekaligus!`,
+      `Pengeluaran total ${totalQty} palet dari ${items.length} batch berhasil & tersimpan otomatis!`,
       'success'
     );
   };
@@ -242,6 +258,7 @@ export default function App() {
   // Save Edit Transaction with cascade PO updates
   const handleSaveEdit = (updated: Transaction) => {
     setTransactions((prev) => {
+      let next: Transaction[];
       // Check if PO was edited
       if (updated.type === 'PO') {
         const original = prev.find((t) => t.id === updated.id) as POTransaction | undefined;
@@ -250,7 +267,7 @@ export default function App() {
           const newPo = updated.poNumber;
 
           const poUpdated = updated as POTransaction;
-          return prev.map((t) => {
+          next = prev.map((t) => {
             if (t.id === updated.id) return updated;
 
             // Cascade update linked inbounds if PO number, qty, or supplier changed
@@ -264,21 +281,30 @@ export default function App() {
             }
             return t;
           });
+        } else {
+          next = prev.map((t) => (t.id === updated.id ? updated : t));
         }
+      } else {
+        next = prev.map((t) => (t.id === updated.id ? updated : t));
       }
 
-      return prev.map((t) => (t.id === updated.id ? updated : t));
+      persistAllTransactions(next);
+      return next;
     });
 
-    showToast('Data berhasil diperbarui.', 'success');
+    showToast('Data berhasil diperbarui & tersimpan otomatis.', 'success');
   };
 
   // Delete Transaction
   const handleExecuteDelete = () => {
     if (!deletingId) return;
-    setTransactions((prev) => prev.filter((t) => t.id !== deletingId));
+    setTransactions((prev) => {
+      const next = prev.filter((t) => t.id !== deletingId);
+      persistAllTransactions(next);
+      return next;
+    });
     setDeletingId(null);
-    showToast('Data berhasil dihapus.', 'success');
+    showToast('Data berhasil dihapus & perubahan tersimpan otomatis.', 'success');
   };
 
   // Reset All
@@ -612,6 +638,11 @@ export default function App() {
               <span className="text-slate-300 hidden md:inline" aria-hidden="true">·</span>
               <span className="text-[11px] font-medium text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 hidden md:inline">
                 {shift}
+              </span>
+              <span className="text-slate-300 hidden lg:inline" aria-hidden="true">·</span>
+              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hidden lg:flex items-center gap-1.5" title="Semua data PO, Kedatangan, dan Pengeluaran tersimpan otomatis secara permanen">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Auto-Save Aktif</span>
               </span>
             </div>
 

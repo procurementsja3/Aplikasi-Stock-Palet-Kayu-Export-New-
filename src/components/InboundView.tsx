@@ -295,7 +295,7 @@ export const InboundView: React.FC<InboundViewProps> = ({
             {activePOData && (
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 uppercase tracking-wider mb-1">
-                  Total Qty di PO (Pallet)
+                  Total Qty di PO (Palet)
                 </label>
                 <input
                   type="number"
