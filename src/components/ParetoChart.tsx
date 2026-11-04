@@ -31,9 +31,10 @@ Chart.register(
 interface ParetoChartProps {
   transactions: Transaction[];
   onRefresh?: () => void;
+  isDarkMode?: boolean;
 }
 
-export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefresh }) => {
+export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefresh, isDarkMode = false }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartInstanceRef = useRef<Chart | null>(null);
 
@@ -152,6 +153,7 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
             position: 'top',
             labels: {
               boxWidth: 14,
+              color: isDarkMode ? '#cbd5e1' : '#334155',
               font: {
                 size: 12,
                 weight: 'bold',
@@ -160,7 +162,11 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
             },
           },
           tooltip: {
-            backgroundColor: '#1e293b',
+            backgroundColor: isDarkMode ? '#0f172a' : '#1e293b',
+            borderColor: isDarkMode ? '#334155' : '#475569',
+            borderWidth: 1,
+            titleColor: '#ffffff',
+            bodyColor: '#e2e8f0',
             padding: 12,
             titleFont: { size: 13, weight: 'bold' },
             bodyFont: { size: 12 },
@@ -183,10 +189,12 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
         },
         scales: {
           x: {
-            grid: { display: false },
+            grid: {
+              display: false,
+            },
             ticks: {
               font: { size: 11, weight: 'bold' },
-              color: '#475569',
+              color: isDarkMode ? '#94a3b8' : '#475569',
             },
           },
           y: {
@@ -197,11 +205,14 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
               display: true,
               text: 'Jumlah Palet',
               font: { size: 11, weight: 'bold' },
-              color: '#64748b',
+              color: isDarkMode ? '#94a3b8' : '#64748b',
             },
             beginAtZero: true,
+            ticks: {
+              color: isDarkMode ? '#94a3b8' : '#64748b',
+            },
             grid: {
-              color: '#f1f5f9',
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#f1f5f9',
             },
           },
           'y-pct': {
@@ -220,6 +231,7 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
               drawOnChartArea: false,
             },
             ticks: {
+              color: '#f59e0b',
               callback: (val) => `${val}%`,
             },
           },
@@ -233,22 +245,22 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
         chartInstanceRef.current = null;
       }
     };
-  }, [transactions]);
+  }, [transactions, isDarkMode]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 overflow-hidden p-6 mb-8 transition-all">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-slate-100 gap-2">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xs border border-slate-200/80 dark:border-slate-800 overflow-hidden p-6 mb-8 transition-colors">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-amber-50 rounded-lg text-amber-700">
+          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-lg text-amber-700 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-base sm:text-lg">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base sm:text-lg">
               Grafik Pareto Pergerakan Palet (All Plant)
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Perbandingan volume kedatangan vs pengeluaran serta kurva persentase kumulatif
             </p>
           </div>
@@ -256,7 +268,7 @@ export const ParetoChart: React.FC<ParetoChartProps> = ({ transactions, onRefres
         {onRefresh && (
           <button
             onClick={onRefresh}
-            className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+            className="text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700 font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

@@ -23,13 +23,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const isReset = type === 'reset';
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[120] flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5 text-center border border-slate-200">
+    <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-[120] flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-sm p-5 text-center border border-slate-200 dark:border-slate-800 transition-colors">
         <div
           className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border ${
             isReset
-              ? 'bg-rose-50 border-rose-200 text-rose-700'
-              : 'bg-amber-50 border-amber-200 text-amber-700'
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400'
+              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-400'
           }`}
         >
           {isReset ? (
@@ -39,11 +39,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           )}
         </div>
 
-        <h3 className="font-bold text-base text-slate-900 mb-1.5">
+        <h3 className="font-bold text-base text-slate-900 dark:text-slate-100 mb-1.5">
           {title || (isReset ? 'Reset Semua Data?' : 'Hapus Data Transaksi?')}
         </h3>
 
-        <p className="text-slate-600 mb-5 text-xs leading-relaxed">
+        <p className="text-slate-600 dark:text-slate-300 mb-5 text-xs leading-relaxed">
           {description ||
             (isReset
               ? 'Peringatan: Seluruh data transaksi palet dan PO akan dihapus secara permanen. Pastikan Anda sudah mengunduh Backup Data sebelum melanjutkan.'
@@ -53,7 +53,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex justify-center gap-2.5">
           <button
             onClick={onClose}
-            className="px-3.5 py-2 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition font-medium flex-1 cursor-pointer"
+            className="px-3.5 py-2 text-xs text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition font-medium flex-1 cursor-pointer"
           >
             Batal
           </button>

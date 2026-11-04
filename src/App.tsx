@@ -9,6 +9,9 @@ import {
   Unlock,
   Shield,
   User,
+  Sun,
+  Moon,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Transaction,
@@ -44,6 +47,35 @@ import {
 export default function App() {
   // Navigation State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'po' | 'inbound' | 'outbound'>('dashboard');
+
+  // Theme State: 'light' | 'dark'
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const savedTheme = localStorage.getItem('sja_theme');
+      if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+
+  // Sync theme to document.documentElement and localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sja_theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (e) {
+      console.error('Failed to sync theme:', e);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   // Location filter on Dashboard
   const [dashboardLocation, setDashboardLocation] = useState<string>('ALL');
@@ -472,6 +504,41 @@ export default function App() {
       ? 'Shift 2 (Sore)'
       : 'Shift 3 (Malam)';
 
+  const poCount = transactions.filter((t) => t.type === 'PO').length;
+  const inCount = transactions.filter((t) => t.type === 'IN').length;
+  const outCount = transactions.filter((t) => t.type === 'OUT').length;
+
+  const navTabs = [
+    {
+      id: 'dashboard' as const,
+      label: 'Dashboard Stok',
+      shortLabel: 'Dashboard',
+      icon: PieChart,
+      badge: transactions.length > 0 ? `${transactions.length}` : undefined,
+    },
+    {
+      id: 'po' as const,
+      label: 'Input PO Proc.',
+      shortLabel: 'PO Proc.',
+      icon: FileSpreadsheet,
+      badge: poCount > 0 ? `${poCount}` : undefined,
+    },
+    {
+      id: 'inbound' as const,
+      label: 'Kedatangan (IN)',
+      shortLabel: 'Inbound (IN)',
+      icon: ArrowDownLeft,
+      badge: inCount > 0 ? `${inCount}` : undefined,
+    },
+    {
+      id: 'outbound' as const,
+      label: 'Pengeluaran (OUT)',
+      shortLabel: 'Outbound (OUT)',
+      icon: ArrowUpRight,
+      badge: outCount > 0 ? `${outCount}` : undefined,
+    },
+  ];
+
   const getViewTitle = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -486,15 +553,15 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden text-slate-800">
+    <div className="flex h-screen bg-slate-100 dark:bg-slate-950 overflow-hidden text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* Toast Notification Container */}
       <ToastContainer toasts={toasts} />
 
-      {/* Desktop Sidebar (Light Grey Industrial Corporate ERP) */}
-      <aside className="w-64 bg-slate-50 text-slate-700 flex-col hidden md:flex shrink-0 border-r border-slate-200 z-30">
+      {/* Desktop Sidebar (Industrial Corporate ERP) */}
+      <aside className="w-64 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-200 flex-col hidden md:flex shrink-0 border-r border-slate-200 dark:border-slate-800 z-30 transition-colors duration-200">
         {/* Brand Header */}
-        <div className="p-4 flex items-center gap-3 border-b border-slate-200 bg-white">
-          <div className="p-1 bg-white rounded-lg border border-slate-200 shadow-xs shrink-0 flex items-center justify-center w-11 h-11">
+        <div className="p-4 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition-colors duration-200">
+          <div className="p-1 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xs shrink-0 flex items-center justify-center w-11 h-11">
             <img
               src="./assets/aistudio/kapal_api_b1467dbf.png"
               alt="Logo Kapal Api PT SJA"
@@ -502,87 +569,114 @@ export default function App() {
             />
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold tracking-tight text-slate-900 leading-tight">
+            <h1 className="text-sm font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
               Monitoring Palet Kayu Export
             </h1>
-            <p className="text-[11px] font-medium text-slate-500 truncate">
+            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 truncate">
               PT Santos Jaya Abadi
             </p>
           </div>
         </div>
 
         {/* User Status Card */}
-        <div className="px-4 py-3 bg-slate-100/70 border-b border-slate-200 text-xs">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
+        <div className="px-4 py-3 bg-slate-100/70 dark:bg-slate-850/60 border-b border-slate-200 dark:border-slate-800 text-xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
             <span className="text-[10px] uppercase font-bold tracking-wider">Akses Pengguna</span>
             {currentUser && (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 font-semibold uppercase">
+              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold uppercase">
                 {currentUser.role}
               </span>
             )}
           </div>
-          <p className="font-semibold text-slate-800 truncate">
+          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
             {currentUser ? currentUser.displayName : 'Tamu (Read-Only)'}
           </p>
         </div>
 
-        {/* Navigation Tabs */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'dashboard'
-                ? 'bg-white text-slate-950 shadow-xs border border-slate-300 font-bold'
-                : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-            }`}
-          >
-            <PieChart className="w-4 h-4 shrink-0 text-slate-500" />
-            <span>Dashboard Stok</span>
-          </button>
+        {/* Navigation Tabs with Smooth Micro-Interactions */}
+        <nav className="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer select-none transition-all duration-200 ease-out active:scale-[0.98] ${
+                  isActive
+                    ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xs border border-slate-300 dark:border-slate-700 font-bold translate-x-1 ring-1 ring-slate-900/5 dark:ring-white/5'
+                    : 'text-slate-600 dark:text-slate-400 border border-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white hover:translate-x-1'
+                }`}
+              >
+                {/* Active Accent Bar Indicator with smooth scale animation */}
+                <span
+                  className={`absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full transition-all duration-200 ease-out ${
+                    isActive
+                      ? 'bg-blue-600 dark:bg-amber-500 opacity-100 scale-y-100'
+                      : 'bg-transparent opacity-0 scale-y-0 group-hover:bg-slate-400/40 dark:group-hover:bg-slate-600/40 group-hover:opacity-100 group-hover:scale-y-75'
+                  }`}
+                />
 
-          <button
-            onClick={() => setActiveTab('po')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'po'
-                ? 'bg-white text-slate-950 shadow-xs border border-slate-300 font-bold'
-                : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-            }`}
-          >
-            <FileSpreadsheet className="w-4 h-4 shrink-0 text-slate-500" />
-            <span>Input PO Proc.</span>
-          </button>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Icon
+                    className={`w-4 h-4 shrink-0 transition-transform duration-200 ease-out ${
+                      isActive
+                        ? 'text-blue-600 dark:text-amber-400 scale-110'
+                        : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-amber-400 group-hover:scale-110 group-hover:-rotate-3'
+                    }`}
+                  />
+                  <span className="truncate">{tab.label}</span>
+                </div>
 
-          <button
-            onClick={() => setActiveTab('inbound')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'inbound'
-                ? 'bg-white text-slate-950 shadow-xs border border-slate-300 font-bold'
-                : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-            }`}
-          >
-            <ArrowDownLeft className="w-4 h-4 shrink-0 text-slate-500" />
-            <span>Kedatangan (IN)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('outbound')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-              activeTab === 'outbound'
-                ? 'bg-white text-slate-950 shadow-xs border border-slate-300 font-bold'
-                : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-            }`}
-          >
-            <ArrowUpRight className="w-4 h-4 shrink-0 text-slate-500" />
-            <span>Pengeluaran (OUT)</span>
-          </button>
+                <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                  {tab.badge && (
+                    <span
+                      className={`px-1.5 py-0.5 text-[10px] font-mono rounded font-medium transition-colors duration-200 ${
+                        isActive
+                          ? 'bg-blue-50 dark:bg-slate-750 text-blue-700 dark:text-amber-300 border border-blue-200/60 dark:border-slate-600'
+                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 transition-all duration-200 ease-out ${
+                      isActive
+                        ? 'text-blue-600 dark:text-amber-400 opacity-100 translate-x-0'
+                        : 'opacity-0 -translate-x-1.5 text-slate-400 group-hover:opacity-80 group-hover:translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
+            );
+          })}
         </nav>
 
         {/* Sidebar Footer Controls */}
-        <div className="p-3 border-t border-slate-200 bg-white mt-auto">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto transition-colors duration-200 space-y-2">
+          {/* Quick theme toggle in sidebar as well */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors text-xs font-medium cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              {theme === 'dark' ? (
+                <Sun className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-indigo-500" />
+              )}
+              <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
+            </div>
+            <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-slate-500">
+              {theme === 'dark' ? 'Gelap' : 'Terang'}
+            </span>
+          </button>
+
           {!currentUser ? (
             <button
               onClick={() => setIsLoginModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition text-xs font-semibold shadow-xs cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-amber-600 dark:hover:bg-amber-500 text-white rounded-lg transition text-xs font-semibold shadow-xs cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>Login Sistem</span>
@@ -590,9 +684,9 @@ export default function App() {
           ) : (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg transition text-xs font-semibold cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg transition text-xs font-semibold cursor-pointer"
             >
-              <Unlock className="w-3.5 h-3.5 text-slate-500" />
+              <Unlock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Logout ({currentUser.username})</span>
             </button>
           )}
@@ -601,11 +695,11 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Top Header Bar with Live Clock & Date */}
-        <header className="bg-white border-b border-slate-200 px-4 sm:px-8 py-3 flex items-center justify-between shadow-2xs shrink-0">
+        {/* Top Header Bar with Live Clock, Theme Toggle & Date */}
+        <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 py-3 flex items-center justify-between shadow-2xs shrink-0 transition-colors duration-200">
           {/* Left: View title & breadcrumb */}
           <div className="flex items-center gap-2.5">
-            <div className="md:hidden p-0.5 bg-white rounded border border-slate-200 shrink-0 w-7 h-7 flex items-center justify-center">
+            <div className="md:hidden p-0.5 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 shrink-0 w-7 h-7 flex items-center justify-center">
               <img
                 src="./assets/aistudio/kapal_api_b1467dbf.png"
                 alt="Logo Kapal Api"
@@ -613,52 +707,73 @@ export default function App() {
               />
             </div>
             <div>
-              <div className="text-[11px] font-medium text-slate-500 hidden sm:block">
+              <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 hidden sm:block">
                 PT SJA · Monitoring Palet Kayu Export
               </div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
                 {getViewTitle()}
               </h2>
             </div>
           </div>
 
-          {/* Right: Live Real-Time Date & Time Clock */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-xs">
-              <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+          {/* Right: Live Real-Time Date, Theme Toggle & Time Clock */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Live Clock & Shift Badge */}
+            <div className="flex items-center gap-2 sm:gap-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs">
+              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
                 <span className="hidden sm:inline">{dayName},</span>
                 <span>{formattedDate}</span>
               </div>
-              <span className="text-slate-300" aria-hidden="true">·</span>
-              <div className="font-mono tabular-nums font-bold text-slate-900 tracking-tight flex items-center gap-1">
+              <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">·</span>
+              <div className="font-mono tabular-nums font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-1">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 <span>{formattedTime}</span>
-                <span className="text-[10px] font-normal text-slate-500">WIB</span>
+                <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">WIB</span>
               </div>
-              <span className="text-slate-300 hidden md:inline" aria-hidden="true">·</span>
-              <span className="text-[11px] font-medium text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200 hidden md:inline">
+              <span className="text-slate-300 dark:text-slate-600 hidden md:inline" aria-hidden="true">·</span>
+              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 hidden md:inline">
                 {shift}
               </span>
-              <span className="text-slate-300 hidden lg:inline" aria-hidden="true">·</span>
-              <span className="text-[11px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 hidden lg:flex items-center gap-1.5" title="Semua data PO, Kedatangan, dan Pengeluaran tersimpan otomatis secara permanen">
+              <span className="text-slate-300 dark:text-slate-600 hidden lg:inline" aria-hidden="true">·</span>
+              <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800 hidden lg:flex items-center gap-1.5" title="Semua data PO, Kedatangan, dan Pengeluaran tersimpan otomatis secara permanen">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Auto-Save Aktif</span>
               </span>
             </div>
+
+            {/* Mode Terang / Mode Gelap Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Ganti ke Mode Terang (Light Mode)' : 'Ganti ke Mode Gelap (Dark Mode)'}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors text-xs font-semibold cursor-pointer shadow-xs"
+              aria-label="Toggle theme mode"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
+                  <span className="hidden md:inline">Mode Terang</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span className="hidden md:inline">Mode Gelap</span>
+                </>
+              )}
+            </button>
 
             {/* Mobile login / logout toggle */}
             <div className="md:hidden">
               {!currentUser ? (
                 <button
                   onClick={() => setIsLoginModalOpen(true)}
-                  className="p-1.5 text-xs bg-slate-800 text-white rounded-lg flex items-center gap-1 font-medium"
+                  className="p-1.5 text-xs bg-slate-800 dark:bg-amber-600 text-white rounded-lg flex items-center gap-1 font-medium cursor-pointer"
                 >
                   <Lock className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <button
                   onClick={handleLogout}
-                  className="p-1.5 text-xs bg-slate-100 border border-slate-300 text-slate-700 rounded-lg flex items-center gap-1"
+                  className="p-1.5 text-xs bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-lg flex items-center gap-1 cursor-pointer"
                 >
                   <Unlock className="w-3.5 h-3.5" />
                 </button>
@@ -667,53 +782,35 @@ export default function App() {
           </div>
         </header>
 
-        {/* Mobile Navigation Bar */}
-        <div className="md:hidden bg-slate-50 border-b border-slate-200 px-3 py-2 flex items-center justify-around text-xs shrink-0">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 rounded-md font-medium ${
-              activeTab === 'dashboard'
-                ? 'bg-white text-slate-900 border border-slate-300 font-bold shadow-xs'
-                : 'text-slate-600'
-            }`}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('po')}
-            className={`px-3 py-1.5 rounded-md font-medium ${
-              activeTab === 'po'
-                ? 'bg-white text-slate-900 border border-slate-300 font-bold shadow-xs'
-                : 'text-slate-600'
-            }`}
-          >
-            PO
-          </button>
-          <button
-            onClick={() => setActiveTab('inbound')}
-            className={`px-3 py-1.5 rounded-md font-medium ${
-              activeTab === 'inbound'
-                ? 'bg-white text-slate-900 border border-slate-300 font-bold shadow-xs'
-                : 'text-slate-600'
-            }`}
-          >
-            Inbound
-          </button>
-          <button
-            onClick={() => setActiveTab('outbound')}
-            className={`px-3 py-1.5 rounded-md font-medium ${
-              activeTab === 'outbound'
-                ? 'bg-white text-slate-900 border border-slate-300 font-bold shadow-xs'
-                : 'text-slate-600'
-            }`}
-          >
-            Outbound
-          </button>
+        {/* Mobile Navigation Bar with Smooth Indicator */}
+        <div className="md:hidden bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 py-2 flex items-center justify-around text-xs shrink-0 transition-colors duration-200 gap-1 overflow-x-auto">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 ease-out active:scale-95 shrink-0 select-none ${
+                  isActive
+                    ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-300 dark:border-slate-700 font-bold shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Icon
+                  className={`w-3.5 h-3.5 transition-colors duration-200 ${
+                    isActive ? 'text-blue-600 dark:text-amber-400' : 'text-slate-400'
+                  }`}
+                />
+                <span>{tab.shortLabel}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Scrollable View Container */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-100">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-100 dark:bg-slate-950 transition-colors duration-200">
+          <div key={activeTab} className="max-w-7xl mx-auto animate-view-fade">
             {activeTab === 'dashboard' && (
               <DashboardView
                 transactions={transactions}
@@ -726,6 +823,7 @@ export default function App() {
                 onConfirmReset={() => setIsResetConfirmOpen(true)}
                 onBackup={handleBackup}
                 onRestore={handleRestore}
+                isDarkMode={theme === 'dark'}
               />
             )}
 
