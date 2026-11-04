@@ -29,63 +29,17 @@ import { EditModal } from './components/EditModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ToastContainer } from './components/Toast';
 
-const STORAGE_KEY = 'sja_pallet_transactions_v3_clean';
-const BACKUP_STORAGE_KEY = 'sja_pallet_backup_store';
-const USER_STORAGE_KEY = 'sja_pallet_current_user_v2';
-
-// Helper to normalize transaction item
-const normalizeTransaction = (item: any, fallbackIndex = 0): Transaction => {
-  const rawType = String(item.type || '').toUpperCase().trim();
-  let type: 'PO' | 'IN' | 'OUT' = 'IN';
-  if (rawType === 'PO' || rawType === 'IN' || rawType === 'OUT') {
-    type = rawType;
-  }
-
-  let lokasiStr = String(item.lokasi || '').trim().toUpperCase();
-  if (lokasiStr && !lokasiStr.startsWith('SJA ') && ['SEPANJANG', 'SEMARANG', 'SUKODONO', 'KARAWANG'].includes(lokasiStr)) {
-    lokasiStr = 'SJA ' + lokasiStr;
-  }
-  const lokasi = (lokasiStr || 'SJA SEPANJANG') as LocationType;
-
-  const base = {
-    id: String(item.id || `tx-${Date.now()}-${fallbackIndex}-${Math.random().toString(36).slice(2, 6)}`),
-    type,
-    date: item.date || new Date().toISOString().split('T')[0],
-    lokasi,
-    timestamp: Number(item.timestamp) || Date.now(),
-  };
-
-  if (type === 'PO') {
-    return {
-      ...base,
-      type: 'PO',
-      supplier: String(item.supplier || '-').trim(),
-      poNumber: String(item.poNumber || item.po || `PO-${Date.now()}`).trim(),
-      poQty: Number(item.poQty) || Number(item.qty) || 0,
-    };
-  }
-
-  if (type === 'OUT') {
-    return {
-      ...base,
-      type: 'OUT',
-      batch: String(item.batch || '-').toUpperCase().trim(),
-      qty: Number(item.qty) || 0,
-      notes: item.notes ? String(item.notes) : undefined,
-    };
-  }
-
-  return {
-    ...base,
-    type: 'IN',
-    supplier: String(item.supplier || '-').trim(),
-    po: item.po ? String(item.po).trim() : undefined,
-    poQty: item.poQty ? Number(item.poQty) : undefined,
-    batch: String(item.batch || '-').toUpperCase().trim(),
-    qty: Number(item.qty) || 0,
-    notes: item.notes ? String(item.notes) : undefined,
-  };
-};
+import {
+  STORAGE_KEY,
+  BACKUP_STORAGE_KEY,
+  USER_STORAGE_KEY,
+  normalizeTransactionItem,
+  loadFromLocalStorage,
+  saveToLocalStorage,
+  saveToIndexedDB,
+  persistAllTransactions,
+  retrieveAllTransactions,
+} from './utils/storage';
 
 export default function App() {
   // Navigation State
@@ -93,6 +47,9 @@ export default function App() {
 
   // Location filter on Dashboard
   const [dashboardLocation, setDashboardLocation] = useState<string>('ALL');
+
+  // Storage initialization flag to prevent premature empty overwrites
+  const [isStorageReady, setIsStorageReady] = useState<boolean>(false);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
@@ -104,40 +61,44 @@ export default function App() {
     }
   });
 
-  // Transaction Data State with multi-fallback storage
+  // Transaction Data State: synchronous local fallback on initial render
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      // Check primary key first, then backup key, then legacy keys
-      const saved =
-        localStorage.getItem(STORAGE_KEY) ||
-        localStorage.getItem(BACKUP_STORAGE_KEY) ||
-        localStorage.getItem('sja_pallet_transactions_v2') ||
-        localStorage.getItem('sja_pallet_transactions_v1');
-
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((item, idx) => normalizeTransaction(item, idx));
-        }
-      }
-    } catch (e) {
-      console.error('Error loading stored transactions:', e);
+    const fromLocal = loadFromLocalStorage();
+    if (fromLocal && fromLocal.length > 0) {
+      return fromLocal;
     }
     return INITIAL_TRANSACTIONS;
   });
 
-  // Sync transactions to localStorage on every change
+  // Deep hydration on mount: loads from IndexedDB (unlimited, permanent) & localStorage
   useEffect(() => {
-    try {
-      const dataStr = JSON.stringify(transactions);
-      localStorage.setItem(STORAGE_KEY, dataStr);
-      if (transactions.length > 0) {
-        localStorage.setItem(BACKUP_STORAGE_KEY, dataStr);
+    let isMounted = true;
+    async function hydrate() {
+      try {
+        const persisted = await retrieveAllTransactions();
+        if (isMounted) {
+          if (persisted && persisted.length > 0) {
+            setTransactions(persisted);
+          }
+          setIsStorageReady(true);
+        }
+      } catch (err) {
+        console.error('Storage hydration error:', err);
+        if (isMounted) setIsStorageReady(true);
       }
-    } catch (e) {
-      console.error('Failed to save transactions to localStorage:', e);
     }
-  }, [transactions]);
+    hydrate();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Sync transactions to persistent storage (both IndexedDB and localStorage)
+  // CRITICAL: only runs after isStorageReady is true to prevent wiping data with empty state on boot!
+  useEffect(() => {
+    if (!isStorageReady) return;
+    persistAllTransactions(transactions);
+  }, [transactions, isStorageReady]);
 
   // Sync user session to localStorage
   useEffect(() => {
@@ -321,13 +282,13 @@ export default function App() {
   };
 
   // Reset All
-  const handleExecuteResetAll = () => {
+  const handleExecuteResetAll = async () => {
     setTransactions([]);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-      localStorage.removeItem(BACKUP_STORAGE_KEY);
+      saveToLocalStorage([]);
+      await saveToIndexedDB([]);
     } catch (e) {
-      console.error('Error clearing localStorage on reset:', e);
+      console.error('Error clearing storage on reset:', e);
     }
     setIsResetConfirmOpen(false);
     showToast('Seluruh data transaksi berhasil di-reset.', 'success');
@@ -352,13 +313,13 @@ export default function App() {
     showToast('File backup data berhasil diunduh.', 'success');
   };
 
-  // Restore Data from JSON with multi-format support & immediate persistence
-  const handleRestore = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Restore Data from JSON with comprehensive multi-format support & bulletproof dual persistence
+  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target?.result as string;
         if (!content || !content.trim()) {
@@ -371,14 +332,36 @@ export default function App() {
         if (Array.isArray(importedData)) {
           rawList = importedData;
         } else if (importedData && typeof importedData === 'object') {
-          if (Array.isArray(importedData.transactions)) {
-            rawList = importedData.transactions;
-          } else if (Array.isArray(importedData.data)) {
-            rawList = importedData.data;
-          } else {
-            // Object with keys as document IDs (common in Firestore exports)
+          // Check common wrapper keys
+          const candidateKeys = ['transactions', 'data', 'items', 'records', 'pallets', 'list', 'rows', 'payload'];
+          for (const k of candidateKeys) {
+            if (Array.isArray((importedData as any)[k])) {
+              rawList = (importedData as any)[k];
+              break;
+            }
+          }
+
+          // If still empty, check if any key has stringified JSON array
+          if (rawList.length === 0) {
+            for (const val of Object.values(importedData)) {
+              if (typeof val === 'string' && val.trim().startsWith('[') && val.trim().endsWith(']')) {
+                try {
+                  const subParsed = JSON.parse(val);
+                  if (Array.isArray(subParsed) && subParsed.length > 0) {
+                    rawList = subParsed;
+                    break;
+                  }
+                } catch {
+                  // ignore
+                }
+              }
+            }
+          }
+
+          // If still empty, check if object keys are document records (e.g. { "tx-1": {...}, "tx-2": {...} })
+          if (rawList.length === 0) {
             rawList = Object.entries(importedData)
-              .filter(([_, val]) => val && typeof val === 'object')
+              .filter(([_, val]) => val && typeof val === 'object' && !Array.isArray(val))
               .map(([key, val]: [string, any]) => ({
                 ...val,
                 id: val.id || key,
@@ -387,41 +370,38 @@ export default function App() {
         }
 
         if (rawList.length === 0) {
-          throw new Error('Tidak ditemukan data transaksi dalam file JSON.');
+          throw new Error('Tidak ditemukan data transaksi yang valid dalam file JSON.');
         }
 
-        // Normalize all incoming items
-        const normalizedItems = rawList.map((item, idx) => normalizeTransaction(item, idx));
+        // Normalize all incoming items with robust schema normalizer
+        const normalizedItems = rawList.map((item, idx) => normalizeTransactionItem(item, idx));
 
-        // Merge with existing transactions without duplicating IDs
-        const existingIds = new Set(transactions.map((t) => t.id));
-        const newItems: Transaction[] = [];
+        // When restoring a backup file, adopt all restored items
+        // If current state has items, merge them keeping restored items as primary
+        let combined: Transaction[] = [];
+        if (transactions.length === 0) {
+          combined = normalizedItems;
+        } else {
+          const restoredIdSet = new Set(normalizedItems.map((item) => item.id));
+          const nonOverlappingOld = transactions.filter((oldItem) => !restoredIdSet.has(oldItem.id));
+          combined = [...normalizedItems, ...nonOverlappingOld];
+        }
 
-        normalizedItems.forEach((item) => {
-          if (!existingIds.has(item.id)) {
-            newItems.push(item);
-            existingIds.add(item.id);
-          }
-        });
+        // Mark storage ready to enable subsequent syncs
+        setIsStorageReady(true);
 
-        // If existing was empty, all normalized items are adopted
-        const combined = transactions.length === 0 ? normalizedItems : [...newItems, ...transactions];
-        const addedCount = transactions.length === 0 ? normalizedItems.length : newItems.length;
-
-        // Immediately update state
+        // Update state
         setTransactions(combined);
 
-        // Immediately and synchronously write to localStorage
-        try {
-          const serialized = JSON.stringify(combined);
-          localStorage.setItem(STORAGE_KEY, serialized);
-          localStorage.setItem(BACKUP_STORAGE_KEY, serialized);
-        } catch (saveErr) {
-          console.error('Immediate save to localStorage error:', saveErr);
-        }
+        // Reset location filter to ALL so restored data is immediately visible
+        setDashboardLocation('ALL');
+
+        // Immediately persist to BOTH localStorage and IndexedDB (dual-storage)
+        saveToLocalStorage(combined);
+        await saveToIndexedDB(combined);
 
         showToast(
-          `Restore sukses! ${addedCount} data transaksi berhasil dipulihkan.`,
+          `Restore sukses! ${normalizedItems.length} transaksi dipulihkan & tersimpan permanen.`,
           'success'
         );
       } catch (err: any) {

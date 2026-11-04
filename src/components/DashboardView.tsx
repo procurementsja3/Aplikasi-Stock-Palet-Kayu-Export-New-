@@ -297,6 +297,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
+      {/* Notice if Location Filter yields 0 records but global data exists */}
+      {selectedLocation !== 'ALL' && filteredTransactions.length === 0 && transactions.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm shadow-2xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              Tidak ada data transaksi untuk <strong>{selectedLocation}</strong>. Ditemukan {transactions.length} transaksi di plant lain.
+            </span>
+          </div>
+          <button
+            onClick={() => onLocationChange('ALL')}
+            className="text-amber-900 hover:text-amber-950 font-bold underline cursor-pointer text-xs"
+          >
+            Tampilkan Semua Lokasi
+          </button>
+        </div>
+      )}
+
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-2xs flex items-center justify-between">
