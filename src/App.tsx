@@ -11,7 +11,6 @@ import {
   User,
   Sun,
   Moon,
-  ChevronRight,
 } from 'lucide-react';
 import {
   Transaction,
@@ -504,38 +503,30 @@ export default function App() {
       ? 'Shift 2 (Sore)'
       : 'Shift 3 (Malam)';
 
-  const poCount = transactions.filter((t) => t.type === 'PO').length;
-  const inCount = transactions.filter((t) => t.type === 'IN').length;
-  const outCount = transactions.filter((t) => t.type === 'OUT').length;
-
   const navTabs = [
     {
       id: 'dashboard' as const,
       label: 'Dashboard Stok',
       shortLabel: 'Dashboard',
       icon: PieChart,
-      badge: transactions.length > 0 ? `${transactions.length}` : undefined,
     },
     {
       id: 'po' as const,
       label: 'Input PO Proc.',
       shortLabel: 'PO Proc.',
       icon: FileSpreadsheet,
-      badge: poCount > 0 ? `${poCount}` : undefined,
     },
     {
       id: 'inbound' as const,
       label: 'Kedatangan (IN)',
       shortLabel: 'Inbound (IN)',
       icon: ArrowDownLeft,
-      badge: inCount > 0 ? `${inCount}` : undefined,
     },
     {
       id: 'outbound' as const,
       label: 'Pengeluaran (OUT)',
       shortLabel: 'Outbound (OUT)',
       icon: ArrowUpRight,
-      badge: outCount > 0 ? `${outCount}` : undefined,
     },
   ];
 
@@ -602,7 +593,7 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold cursor-pointer select-none transition-all duration-200 ease-out active:scale-[0.98] ${
+                className={`group relative w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer select-none transition-all duration-200 ease-out active:scale-[0.98] ${
                   isActive
                     ? 'bg-white dark:bg-slate-800 text-slate-950 dark:text-white shadow-xs border border-slate-300 dark:border-slate-700 font-bold translate-x-1 ring-1 ring-slate-900/5 dark:ring-white/5'
                     : 'text-slate-600 dark:text-slate-400 border border-transparent hover:bg-slate-200/70 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white hover:translate-x-1'
@@ -617,37 +608,14 @@ export default function App() {
                   }`}
                 />
 
-                <div className="flex items-center gap-3 min-w-0">
-                  <Icon
-                    className={`w-4 h-4 shrink-0 transition-transform duration-200 ease-out ${
-                      isActive
-                        ? 'text-blue-600 dark:text-amber-400 scale-110'
-                        : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-amber-400 group-hover:scale-110 group-hover:-rotate-3'
-                    }`}
-                  />
-                  <span className="truncate">{tab.label}</span>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-                  {tab.badge && (
-                    <span
-                      className={`px-1.5 py-0.5 text-[10px] font-mono rounded font-medium transition-colors duration-200 ${
-                        isActive
-                          ? 'bg-blue-50 dark:bg-slate-750 text-blue-700 dark:text-amber-300 border border-blue-200/60 dark:border-slate-600'
-                          : 'bg-slate-200/70 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-slate-700'
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                  <ChevronRight
-                    className={`w-3.5 h-3.5 transition-all duration-200 ease-out ${
-                      isActive
-                        ? 'text-blue-600 dark:text-amber-400 opacity-100 translate-x-0'
-                        : 'opacity-0 -translate-x-1.5 text-slate-400 group-hover:opacity-80 group-hover:translate-x-0'
-                    }`}
-                  />
-                </div>
+                <Icon
+                  className={`w-4 h-4 shrink-0 transition-transform duration-200 ease-out ${
+                    isActive
+                      ? 'text-blue-600 dark:text-amber-400 scale-110'
+                      : 'text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-amber-400 group-hover:scale-110 group-hover:-rotate-3'
+                  }`}
+                />
+                <span className="truncate">{tab.label}</span>
               </button>
             );
           })}
