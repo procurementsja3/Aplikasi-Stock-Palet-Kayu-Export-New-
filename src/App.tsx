@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Boxes,
   PieChart,
@@ -11,7 +11,15 @@ import {
   User,
   Sun,
   Moon,
+  Cloud,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react';
+import {
+  subscribeToCloudTransactions,
+  saveTransactionsToCloud,
+  CloudSyncStatus,
+} from './utils/firebase';
 import {
   Transaction,
   LocationType,
@@ -82,6 +90,11 @@ export default function App() {
   // Storage initialization flag to prevent premature empty overwrites
   const [isStorageReady, setIsStorageReady] = useState<boolean>(false);
 
+  // Cloud Sync state (Google Firebase Firestore)
+  const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('syncing');
+  const [cloudError, setCloudError] = useState<string | null>(null);
+  const isIncomingCloudUpdateRef = useRef<boolean>(false);
+
   // Authentication State
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
     try {
@@ -124,12 +137,61 @@ export default function App() {
     };
   }, []);
 
-  // Sync transactions to persistent storage (both IndexedDB and localStorage)
-  // CRITICAL: only runs after isStorageReady is true to prevent wiping data with empty state on boot!
+  // Real-Time Google Firebase Firestore Cloud Listener
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const unsubscribe = subscribeToCloudTransactions(
+      (remoteTransactions) => {
+        if (!isSubscribed) return;
+        if (remoteTransactions && remoteTransactions.length > 0) {
+          isIncomingCloudUpdateRef.current = true;
+          setTransactions(remoteTransactions);
+          persistAllTransactions(remoteTransactions);
+          setIsStorageReady(true);
+        }
+        setCloudStatus('connected');
+        setCloudError(null);
+      },
+      (status, errorMsg) => {
+        if (!isSubscribed) return;
+        setCloudStatus(status);
+        if (errorMsg) setCloudError(errorMsg);
+      }
+    );
+
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Triple-Storage Sync: Persist to IndexedDB, LocalStorage, AND Firebase Cloud
   useEffect(() => {
     if (!isStorageReady) return;
+
+    // 1. Immediate local save (IndexedDB + LocalStorage)
     persistAllTransactions(transactions);
-  }, [transactions, isStorageReady]);
+
+    // 2. If this state update originated from an incoming Firebase onSnapshot, don't re-upload
+    if (isIncomingCloudUpdateRef.current) {
+      isIncomingCloudUpdateRef.current = false;
+      return;
+    }
+
+    // 3. Asynchronously upload to Google Firebase Firestore Cloud
+    saveTransactionsToCloud(transactions, currentUser?.displayName || 'User').then((res) => {
+      if (res.success) {
+        setCloudStatus('connected');
+        setCloudError(null);
+      } else {
+        if (res.error?.includes('Rules') || res.error?.includes('Firestore') || res.error?.includes('Akses')) {
+          setCloudStatus('error');
+          setCloudError(res.error);
+        }
+      }
+    });
+  }, [transactions, isStorageReady, currentUser]);
 
   // Sync user session to localStorage
   useEffect(() => {
@@ -344,6 +406,7 @@ export default function App() {
     try {
       saveToLocalStorage([]);
       await saveToIndexedDB([]);
+      await saveTransactionsToCloud([], currentUser?.displayName || 'Admin');
     } catch (e) {
       console.error('Error clearing storage on reset:', e);
     }
@@ -453,9 +516,10 @@ export default function App() {
         // Reset location filter to ALL so restored data is immediately visible
         setDashboardLocation('ALL');
 
-        // Immediately persist to BOTH localStorage and IndexedDB (dual-storage)
+        // Immediately persist to BOTH localStorage and IndexedDB (dual-storage) AND Cloud
         saveToLocalStorage(combined);
         await saveToIndexedDB(combined);
+        saveTransactionsToCloud(combined, currentUser?.displayName || 'Restore');
 
         showToast(
           `Restore sukses! ${normalizedItems.length} transaksi dipulihkan & tersimpan permanen.`,
@@ -720,6 +784,32 @@ export default function App() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Auto-Save Aktif</span>
               </span>
+              <span className="text-slate-300 dark:text-slate-600 hidden xl:inline" aria-hidden="true">·</span>
+              {cloudStatus === 'connected' ? (
+                <span
+                  className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 hidden xl:flex items-center gap-1.5"
+                  title="Terhubung ke Google Firebase Firestore (sja-stok-palet) · Real-time sync aktif"
+                >
+                  <Cloud className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Firebase Cloud Aktif</span>
+                </span>
+              ) : cloudStatus === 'syncing' ? (
+                <span
+                  className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 hidden xl:flex items-center gap-1.5"
+                  title="Menyinkronkan data dengan Firebase Cloud..."
+                >
+                  <RefreshCw className="w-3 h-3 text-amber-500 animate-spin" />
+                  <span>Syncing Cloud...</span>
+                </span>
+              ) : (
+                <span
+                  className="text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 hidden xl:flex items-center gap-1.5"
+                  title={cloudError || 'Penyimpanan lokal (Dual Storage) tetap aktif & aman'}
+                >
+                  <CloudOff className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Lokal Aktif (Dual Storage)</span>
+                </span>
+              )}
             </div>
 
             {/* Mode Terang / Mode Gelap Toggle Button */}
