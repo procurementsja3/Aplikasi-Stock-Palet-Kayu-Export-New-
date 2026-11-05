@@ -134,7 +134,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleQuickLogin('admin')}
-                className="p-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 rounded-lg text-left transition font-medium col-span-2 flex items-center justify-between cursor-pointer"
+                className="p-2 border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-left transition font-medium col-span-2 flex items-center justify-between cursor-pointer"
               >
                 <span className="flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />

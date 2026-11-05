@@ -569,19 +569,32 @@ export default function App() {
           </div>
         </div>
 
-        {/* User Status Card */}
-        <div className="px-4 py-3 bg-slate-100/70 dark:bg-slate-850/60 border-b border-slate-200 dark:border-slate-800 text-xs">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-1">
-            <span className="text-[10px] uppercase font-bold tracking-wider">Akses Pengguna</span>
-            {currentUser && (
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-750 text-slate-700 dark:text-slate-200 font-semibold uppercase">
+        {/* User Status Card with Crisp Dark Mode Contrast */}
+        <div className="px-4 py-3 bg-slate-100/80 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 text-xs transition-colors duration-200">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
+              Akses Pengguna
+            </span>
+            {currentUser ? (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold uppercase">
                 {currentUser.role}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-300/70 dark:border-slate-700 font-medium">
+                Publik
               </span>
             )}
           </div>
-          <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-            {currentUser ? currentUser.displayName : 'Tamu (Read-Only)'}
-          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                currentUser ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : 'bg-slate-400 dark:bg-slate-500'
+              }`}
+            />
+            <p className="font-semibold text-slate-900 dark:text-white truncate text-xs">
+              {currentUser ? currentUser.displayName : 'Tamu (Read-Only)'}
+            </p>
+          </div>
         </div>
 
         {/* Navigation Tabs with Smooth Micro-Interactions */}
@@ -626,7 +639,7 @@ export default function App() {
           {/* Quick theme toggle in sidebar as well */}
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors text-xs font-medium cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xs font-medium cursor-pointer"
           >
             <div className="flex items-center gap-2">
               {theme === 'dark' ? (
@@ -652,7 +665,7 @@ export default function App() {
           ) : (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg transition text-xs font-semibold cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg transition text-xs font-semibold cursor-pointer"
             >
               <Unlock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               <span>Logout ({currentUser.username})</span>
@@ -713,7 +726,7 @@ export default function App() {
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Ganti ke Mode Terang (Light Mode)' : 'Ganti ke Mode Gelap (Dark Mode)'}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors text-xs font-semibold cursor-pointer shadow-xs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-xs font-semibold cursor-pointer shadow-xs"
               aria-label="Toggle theme mode"
             >
               {theme === 'dark' ? (
