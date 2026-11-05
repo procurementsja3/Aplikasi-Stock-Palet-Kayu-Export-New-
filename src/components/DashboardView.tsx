@@ -24,6 +24,7 @@ import {
 } from '../types/pallet';
 import { PLANT_LOCATIONS } from '../data/initialData';
 import { ParetoChart } from './ParetoChart';
+import { MonthlyPlantAverage } from './MonthlyPlantAverage';
 
 interface DashboardViewProps {
   transactions: Transaction[];
@@ -378,6 +379,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Analisis Rata-Rata Palet Masuk & Keluar per Bulan per Plant */}
+      <MonthlyPlantAverage
+        transactions={transactions}
+        selectedLocation={selectedLocation}
+        onSelectLocation={onLocationChange}
+      />
 
       {/* Pareto Chart (Tampil bila filter ALL) */}
       {selectedLocation === 'ALL' && (
