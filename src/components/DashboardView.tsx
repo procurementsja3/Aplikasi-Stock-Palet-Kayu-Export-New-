@@ -50,6 +50,7 @@ interface DashboardViewProps {
 
 const ITEMS_PER_PAGE_PO = 10;
 const ITEMS_PER_PAGE_DASH = 5;
+const ITEMS_PER_PAGE_BATCH = 10;
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   transactions,
@@ -69,6 +70,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [poPage, setPoPage] = useState(1);
   const [inboundPage, setInboundPage] = useState(1);
   const [outboundPage, setOutboundPage] = useState(1);
+  const [batchPage, setBatchPage] = useState(1);
 
   // Filter transactions based on selected location (flexible matching)
   const filteredTransactions = useMemo(() => {
@@ -236,6 +238,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return allFilteredOutbounds.slice(start, start + ITEMS_PER_PAGE_DASH);
   }, [allFilteredOutbounds, outboundPage]);
 
+  const paginatedBatchBalances = useMemo(() => {
+    const start = (batchPage - 1) * ITEMS_PER_PAGE_BATCH;
+    return batchBalances.slice(start, start + ITEMS_PER_PAGE_BATCH);
+  }, [batchBalances, batchPage]);
+
+  const totalBatchPages = Math.ceil(batchBalances.length / ITEMS_PER_PAGE_BATCH) || 1;
+
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
     const parts = dateStr.split('-');
@@ -266,6 +275,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 setPoPage(1);
                 setInboundPage(1);
                 setOutboundPage(1);
+                setBatchPage(1);
               }}
               className="border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 font-semibold rounded-lg px-3 py-1.5 text-xs sm:text-sm focus:ring-1 focus:ring-slate-800 dark:focus:ring-slate-400 outline-none bg-slate-50 dark:bg-slate-800 shadow-2xs cursor-pointer"
             >
@@ -477,7 +487,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                batchBalances.map((b) => {
+                paginatedBatchBalances.map((b) => {
                   const isZero = b.currentBalance === 0;
                   return (
                     <tr
@@ -514,6 +524,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {batchBalances.length > ITEMS_PER_PAGE_BATCH && (
+          <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-slate-600 dark:text-slate-400 font-mono">
+              Menampilkan {(batchPage - 1) * ITEMS_PER_PAGE_BATCH + 1} -{' '}
+              {Math.min(batchPage * ITEMS_PER_PAGE_BATCH, batchBalances.length)} dari{' '}
+              {batchBalances.length} batch
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setBatchPage((p) => Math.max(1, p - 1))}
+                disabled={batchPage <= 1}
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Sebelumnya
+              </button>
+              <span className="text-xs font-mono font-medium text-slate-600 dark:text-slate-400 px-1">
+                Hal {batchPage} dari {totalBatchPages}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setBatchPage((p) =>
+                    p * ITEMS_PER_PAGE_BATCH < batchBalances.length ? p + 1 : p
+                  )
+                }
+                disabled={batchPage * ITEMS_PER_PAGE_BATCH >= batchBalances.length}
+                className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center gap-1 cursor-pointer"
+              >
+                Selanjutnya <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Outstanding PO Status Table */}
