@@ -6,6 +6,7 @@ import {
   Trash2,
   AlertCircle,
   PackageCheck,
+  FileSpreadsheet,
 } from 'lucide-react';
 import {
   Transaction,
@@ -15,6 +16,7 @@ import {
   BatchBalance,
 } from '../types/pallet';
 import { PLANT_LOCATIONS } from '../data/initialData';
+import { exportOutboundsToExcel } from '../utils/excelExport';
 
 interface OutboundViewProps {
   transactions: Transaction[];
@@ -427,7 +429,7 @@ export const OutboundView: React.FC<OutboundViewProps> = ({
             </div>
           )}
 
-          <div className="p-4 flex justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+          <div className="p-4 flex flex-wrap gap-2 justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                 Riwayat Pengeluaran Palet
@@ -438,9 +440,25 @@ export const OutboundView: React.FC<OutboundViewProps> = ({
                   : 'Semua plant SJA'}
               </p>
             </div>
-            <span className="text-xs font-mono font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded">
-              {outbounds.length} Record
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const plantName = currentUser?.role === 'purchasing' && currentUser.location !== 'ALL'
+                    ? currentUser.location
+                    : undefined;
+                  exportOutboundsToExcel(outbounds, 'Riwayat_Pengeluaran_Palet_SJA', plantName);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Download data riwayat pengeluaran dalam format Microsoft Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                <span>Konversi ke Excel</span>
+              </button>
+              <span className="text-xs font-mono font-medium border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg">
+                {outbounds.length} Record
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto flex-1">

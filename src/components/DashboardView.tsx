@@ -13,6 +13,7 @@ import {
   Edit2,
   Package,
   Cloud,
+  FileSpreadsheet,
 } from 'lucide-react';
 import {
   Transaction,
@@ -26,6 +27,11 @@ import {
 import { PLANT_LOCATIONS } from '../data/initialData';
 import { ParetoChart } from './ParetoChart';
 import { MonthlyPlantAverage } from './MonthlyPlantAverage';
+import {
+  exportInboundsToExcel,
+  exportOutboundsToExcel,
+  exportFullPalletWorkbook,
+} from '../utils/excelExport';
 
 interface DashboardViewProps {
   transactions: Transaction[];
@@ -249,7 +255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Unit Monitoring Inventaris
             </div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-              Ringkasan Saldo Palet Lintas Plant
+              Resume Stock Palet Antar Plant
             </h2>
           </div>
           <div className="sm:ml-4">
@@ -273,43 +279,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Admin Tools */}
-        {isAdmin && (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={onConfirmReset}
-              className="bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-slate-300 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="Reset seluruh data sistem"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Reset Data
-            </button>
-            <button
-              onClick={onBackup}
-              className="bg-slate-800 dark:bg-slate-100 hover:bg-slate-900 dark:hover:bg-white text-white dark:text-slate-900 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-              title="Unduh backup data JSON"
-            >
-              <Download className="w-3.5 h-3.5" /> Backup
-            </button>
-            <label className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
-              <Upload className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Restore
-              <input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={onRestore}
-              />
-            </label>
-            {onOpenCloudSync && (
+        {/* Action Tools (Export Excel, Cloud Sync, & Admin Tools) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Admin-only Destructive Data Controls */}
+          {isAdmin && (
+            <>
               <button
-                onClick={onOpenCloudSync}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                title="Buka panel sinkronisasi Google Firebase Cloud (Multi-PC)"
+                onClick={onConfirmReset}
+                className="bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-slate-300 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Reset seluruh data sistem"
               >
-                <Cloud className="w-3.5 h-3.5" /> Sync Cloud
+                <Trash2 className="w-3.5 h-3.5" /> Reset Data
               </button>
-            )}
-          </div>
-        )}
+              <button
+                onClick={onBackup}
+                className="bg-slate-800 dark:bg-slate-100 hover:bg-slate-900 dark:hover:bg-white text-white dark:text-slate-900 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Unduh backup data JSON"
+              >
+                <Download className="w-3.5 h-3.5" /> Backup
+              </button>
+              <label className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+                <Upload className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" /> Restore
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={onRestore}
+                />
+              </label>
+            </>
+          )}
+
+          {/* Export Excel (Bisa diakses oleh Superadmin maupun PIC Plant) */}
+          <button
+            onClick={() => {
+              const activePlant = currentUser?.role === 'purchasing' && currentUser.location !== 'ALL'
+                ? currentUser.location
+                : selectedLocation;
+              exportFullPalletWorkbook(transactions, 'Laporan_Lengkap_Palet_SJA', activePlant);
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            title={
+              currentUser?.role === 'purchasing'
+                ? `Unduh laporan Excel lengkap khusus ${currentUser.location}`
+                : 'Unduh seluruh laporan Excel palet'
+            }
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
+            <span>
+              {currentUser?.role === 'purchasing'
+                ? `Export Excel (${currentUser.location.replace('SJA ', '')})`
+                : 'Export Excel'}
+            </span>
+          </button>
+
+          {/* Cloud Sync Button */}
+          {onOpenCloudSync && (
+            <button
+              onClick={onOpenCloudSync}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+              title="Buka panel status sinkronisasi Cloud"
+            >
+              <Cloud className="w-3.5 h-3.5" /> Sync Cloud
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Notice if Location Filter yields 0 records but global data exists */}
@@ -690,19 +724,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Riwayat Kedatangan */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xs border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
-          <div className="p-4 flex justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+          <div className="p-4 flex flex-wrap gap-2 justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
             <div>
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
                 Riwayat Kedatangan Terakhir
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Log penerimaan inbound supplier</p>
             </div>
-            <button
-              onClick={() => onNavigate('inbound')}
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1 cursor-pointer"
-            >
-              Input Masuk <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const activePlant = currentUser?.role === 'purchasing' && currentUser.location !== 'ALL'
+                    ? currentUser.location
+                    : selectedLocation;
+                  exportInboundsToExcel(allFilteredInbounds, 'Riwayat_Kedatangan_Palet_SJA', activePlant);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Download data kedatangan ini ke Microsoft Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => onNavigate('inbound')}
+                className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1 cursor-pointer"
+              >
+                Input Masuk <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -809,19 +859,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Riwayat Pengeluaran */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xs border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors">
-          <div className="p-4 flex justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+          <div className="p-4 flex flex-wrap gap-2 justify-between items-center bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
             <div>
               <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
                 Riwayat Pengeluaran Terakhir
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Log pemakaian / transfer palet</p>
             </div>
-            <button
-              onClick={() => onNavigate('outbound')}
-              className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1 cursor-pointer"
-            >
-              Input Keluar <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const activePlant = currentUser?.role === 'purchasing' && currentUser.location !== 'ALL'
+                    ? currentUser.location
+                    : selectedLocation;
+                  exportOutboundsToExcel(allFilteredOutbounds, 'Riwayat_Pengeluaran_Palet_SJA', activePlant);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Download data pengeluaran ini ke Microsoft Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-100" />
+                <span>Excel</span>
+              </button>
+              <button
+                onClick={() => onNavigate('outbound')}
+                className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1 cursor-pointer"
+              >
+                Input Keluar <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Lock, Edit2, Trash2, FileText, Search } from 'lucide-react';
+import { Plus, Lock, Edit2, Trash2, FileText, Search, FileSpreadsheet } from 'lucide-react';
 import { Transaction, LocationType, AppUser, POTransaction } from '../types/pallet';
 import { PLANT_LOCATIONS } from '../data/initialData';
+import { exportPOsToExcel } from '../utils/excelExport';
 
 interface POViewProps {
   transactions: Transaction[];
@@ -252,15 +253,31 @@ export const POView: React.FC<POViewProps> = ({
                   : 'Semua plant SJA'}
               </p>
             </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Cari PO / Supplier..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-1 focus:ring-slate-800 dark:focus:ring-slate-400 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-              />
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  const plantName = currentUser?.role === 'purchasing' && currentUser.location !== 'ALL'
+                    ? currentUser.location
+                    : undefined;
+                  exportPOsToExcel(masterPOs, 'Daftar_Master_PO_SJA', plantName);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                title="Download data Master PO dalam format Microsoft Excel (.xlsx)"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                <span>Konversi ke Excel</span>
+              </button>
+              <div className="relative w-full sm:w-56">
+                <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Cari PO / Supplier..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:ring-1 focus:ring-slate-800 dark:focus:ring-slate-400 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                />
+              </div>
             </div>
           </div>
 
