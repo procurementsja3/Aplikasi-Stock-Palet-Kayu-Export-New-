@@ -26,6 +26,22 @@ const SYNC_DOCUMENT = 'pallet_inventory';
 export type CloudSyncStatus = 'connected' | 'syncing' | 'offline' | 'error';
 
 /**
+ * Membersihkan objek transaksi agar aman untuk Firestore
+ * (Firestore menolak properti bernilai undefined, jadi kita buang properti undefined tersebut)
+ */
+export function sanitizeForFirestore(items: Transaction[]): any[] {
+  return items.map((item) => {
+    const clean: Record<string, any> = {};
+    for (const [key, val] of Object.entries(item)) {
+      if (val !== undefined) {
+        clean[key] = val;
+      }
+    }
+    return clean;
+  });
+}
+
+/**
  * Menyimpan seluruh data transaksi ke Google Firebase Firestore Cloud
  */
 export async function saveTransactionsToCloud(
@@ -34,19 +50,22 @@ export async function saveTransactionsToCloud(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const docRef = doc(db, SYNC_COLLECTION, SYNC_DOCUMENT);
+    const sanitized = sanitizeForFirestore(transactions);
+
     await setDoc(
       docRef,
       {
-        transactions,
-        totalItems: transactions.length,
+        transactions: sanitized,
+        totalItems: sanitized.length,
         lastUpdated: Date.now(),
         updatedBy: updaterName,
       },
       { merge: true }
     );
+    console.log(`[Firebase Cloud Sync] Berhasil upload ${sanitized.length} data ke Firestore.`);
     return { success: true };
   } catch (err: any) {
-    console.warn('[Firebase Cloud Sync] Gagal upload ke cloud:', err?.message || err);
+    console.error('[Firebase Cloud Sync] Gagal upload ke cloud:', err);
     return {
       success: false,
       error: err?.code === 'permission-denied'

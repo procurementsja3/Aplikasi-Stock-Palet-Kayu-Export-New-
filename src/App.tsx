@@ -18,6 +18,7 @@ import {
 import {
   subscribeToCloudTransactions,
   saveTransactionsToCloud,
+  fetchTransactionsFromCloud,
   CloudSyncStatus,
 } from './utils/firebase';
 import {
@@ -37,6 +38,7 @@ import { OutboundView } from './components/OutboundView';
 import { LoginModal } from './components/LoginModal';
 import { EditModal } from './components/EditModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { CloudSyncModal } from './components/CloudSyncModal';
 import { ToastContainer } from './components/Toast';
 
 import {
@@ -93,7 +95,10 @@ export default function App() {
   // Cloud Sync state (Google Firebase Firestore)
   const [cloudStatus, setCloudStatus] = useState<CloudSyncStatus>('syncing');
   const [cloudError, setCloudError] = useState<string | null>(null);
+  const [lastSyncedTime, setLastSyncedTime] = useState<number | null>(null);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState<boolean>(false);
   const isIncomingCloudUpdateRef = useRef<boolean>(false);
+  const isCloudHydratedRef = useRef<boolean>(false);
 
   // Authentication State
   const [currentUser, setCurrentUser] = useState<AppUser | null>(() => {
@@ -114,40 +119,90 @@ export default function App() {
     return INITIAL_TRANSACTIONS;
   });
 
-  // Deep hydration on mount: loads from IndexedDB (unlimited, permanent) & localStorage
+  // Dual-Boot Hydration: Loads local cache instantly, then syncs with Firebase Cloud
   useEffect(() => {
     let isMounted = true;
-    async function hydrate() {
+
+    async function initializeData() {
+      // Step 1: Check local storage (fastest, offline ready)
+      let initialData: Transaction[] = [];
       try {
         const persisted = await retrieveAllTransactions();
-        if (isMounted) {
-          if (persisted && persisted.length > 0) {
-            setTransactions(persisted);
-          }
-          setIsStorageReady(true);
+        if (persisted && persisted.length > 0) {
+          initialData = persisted;
+          if (isMounted) setTransactions(persisted);
         }
       } catch (err) {
-        console.error('Storage hydration error:', err);
+        console.warn('Local storage load warning:', err);
+      }
+
+      // Step 2: Concurrently query Firebase Cloud Firestore
+      try {
+        setCloudStatus('syncing');
+        const cloudData = await fetchTransactionsFromCloud();
+
+        if (isMounted) {
+          isCloudHydratedRef.current = true;
+
+          if (cloudData && cloudData.length > 0) {
+            // Case A: Cloud has data! (e.g. PC 2 opening link or fresh device)
+            console.log(`[Cloud Boot] Adopting ${cloudData.length} records from Firebase Cloud`);
+            isIncomingCloudUpdateRef.current = true;
+            setTransactions(cloudData);
+            persistAllTransactions(cloudData);
+            setLastSyncedTime(Date.now());
+            setCloudStatus('connected');
+            setCloudError(null);
+          } else if (initialData.length > 0) {
+            // Case B: Local has data (e.g. PC 1 restored a JSON backup), but Cloud is empty:
+            // Upload PC 1's data to Cloud so PC 2 and other devices can access it!
+            console.log(`[Cloud Boot] Local has ${initialData.length} items. Uploading to Cloud...`);
+            saveTransactionsToCloud(initialData, 'Initial PC Upload').then((res) => {
+              if (res.success) {
+                setCloudStatus('connected');
+                setLastSyncedTime(Date.now());
+                setCloudError(null);
+              } else if (res.error) {
+                setCloudStatus('error');
+                setCloudError(res.error);
+              }
+            });
+          } else {
+            setCloudStatus('connected');
+          }
+        }
+      } catch (cloudErr: any) {
+        console.warn('[Cloud Boot] Cloud fetch error:', cloudErr);
+        if (isMounted) {
+          setCloudStatus('error');
+          setCloudError(cloudErr?.message || 'Gagal tersambung ke Firebase Cloud');
+        }
+      } finally {
         if (isMounted) setIsStorageReady(true);
       }
     }
-    hydrate();
+
+    initializeData();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Real-Time Google Firebase Firestore Cloud Listener
+  // Real-Time Google Firebase Firestore Cloud Listener (onSnapshot)
   useEffect(() => {
     let isSubscribed = true;
 
     const unsubscribe = subscribeToCloudTransactions(
-      (remoteTransactions) => {
+      (remoteTransactions, lastUpdated) => {
         if (!isSubscribed) return;
+        isCloudHydratedRef.current = true;
         if (remoteTransactions && remoteTransactions.length > 0) {
+          console.log(`[Cloud Snapshot] Received ${remoteTransactions.length} items from Firebase`);
           isIncomingCloudUpdateRef.current = true;
           setTransactions(remoteTransactions);
           persistAllTransactions(remoteTransactions);
+          setLastSyncedTime(lastUpdated || Date.now());
           setIsStorageReady(true);
         }
         setCloudStatus('connected');
@@ -179,11 +234,19 @@ export default function App() {
       return;
     }
 
-    // 3. Asynchronously upload to Google Firebase Firestore Cloud
+    // 3. CRITICAL PROTECTION FOR NEW DEVICES:
+    // If transactions is empty, and cloud has NOT been hydrated yet, DO NOT wipe cloud!
+    if (transactions.length === 0 && !isCloudHydratedRef.current) {
+      console.log('[Cloud Protect] Ignoring empty transactions save on boot before cloud hydration');
+      return;
+    }
+
+    // 4. Asynchronously upload to Google Firebase Firestore Cloud
     saveTransactionsToCloud(transactions, currentUser?.displayName || 'User').then((res) => {
       if (res.success) {
         setCloudStatus('connected');
         setCloudError(null);
+        setLastSyncedTime(Date.now());
       } else {
         if (res.error?.includes('Rules') || res.error?.includes('Firestore') || res.error?.includes('Akses')) {
           setCloudStatus('error');
@@ -192,6 +255,43 @@ export default function App() {
       }
     });
   }, [transactions, isStorageReady, currentUser]);
+
+  // Manual Force Upload to Cloud
+  const handleForceUploadToCloud = async (): Promise<boolean> => {
+    const res = await saveTransactionsToCloud(transactions, currentUser?.displayName || 'Manual Upload');
+    if (res.success) {
+      setCloudStatus('connected');
+      setCloudError(null);
+      setLastSyncedTime(Date.now());
+      showToast(`Sukses upload ${transactions.length} transaksi ke Firebase Cloud! Data kini dapat dibuka dari PC lain.`, 'success');
+      return true;
+    } else {
+      setCloudStatus('error');
+      setCloudError(res.error || 'Gagal upload');
+      showToast(`Gagal upload ke cloud: ${res.error || 'Periksa koneksi'}`, 'error');
+      return false;
+    }
+  };
+
+  // Manual Force Download from Cloud
+  const handleForceDownloadFromCloud = async (): Promise<boolean> => {
+    setCloudStatus('syncing');
+    const cloudData = await fetchTransactionsFromCloud();
+    if (cloudData && cloudData.length > 0) {
+      isIncomingCloudUpdateRef.current = true;
+      setTransactions(cloudData);
+      persistAllTransactions(cloudData);
+      setLastSyncedTime(Date.now());
+      setCloudStatus('connected');
+      setCloudError(null);
+      showToast(`Sukses menarik ${cloudData.length} transaksi dari Firebase Cloud ke PC ini!`, 'success');
+      return true;
+    } else {
+      setCloudStatus('connected');
+      showToast('Tidak ditemukan data transaksi di Firebase Cloud. Pastikan PC 1 sudah melakukan upload.', 'info');
+      return false;
+    }
+  };
 
   // Sync user session to localStorage
   useEffect(() => {
@@ -784,32 +884,35 @@ export default function App() {
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Auto-Save Aktif</span>
               </span>
-              <span className="text-slate-300 dark:text-slate-600 hidden xl:inline" aria-hidden="true">·</span>
-              {cloudStatus === 'connected' ? (
-                <span
-                  className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 hidden xl:flex items-center gap-1.5"
-                  title="Terhubung ke Google Firebase Firestore (sja-stok-palet) · Real-time sync aktif"
-                >
-                  <Cloud className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  <span>Firebase Cloud Aktif</span>
-                </span>
-              ) : cloudStatus === 'syncing' ? (
-                <span
-                  className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 hidden xl:flex items-center gap-1.5"
-                  title="Menyinkronkan data dengan Firebase Cloud..."
-                >
-                  <RefreshCw className="w-3 h-3 text-amber-500 animate-spin" />
-                  <span>Syncing Cloud...</span>
-                </span>
-              ) : (
-                <span
-                  className="text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 hidden xl:flex items-center gap-1.5"
-                  title={cloudError || 'Penyimpanan lokal (Dual Storage) tetap aktif & aman'}
-                >
-                  <CloudOff className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Lokal Aktif (Dual Storage)</span>
-                </span>
-              )}
+              <span className="text-slate-300 dark:text-slate-600 hidden sm:inline" aria-hidden="true">·</span>
+              <button
+                onClick={() => setIsCloudModalOpen(true)}
+                className="flex items-center gap-1.5 cursor-pointer hover:opacity-85 transition active:scale-95"
+                title="Buka panel status & sinkronisasi Cloud Firebase (Multi-PC)"
+              >
+                {cloudStatus === 'connected' ? (
+                  <span
+                    className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 flex items-center gap-1.5"
+                  >
+                    <Cloud className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <span>Firebase Cloud Aktif</span>
+                  </span>
+                ) : cloudStatus === 'syncing' ? (
+                  <span
+                    className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3 h-3 text-amber-500 animate-spin" />
+                    <span>Syncing Cloud...</span>
+                  </span>
+                ) : (
+                  <span
+                    className="text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700 flex items-center gap-1.5"
+                  >
+                    <CloudOff className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Lokal Aktif (Dual Storage)</span>
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Mode Terang / Mode Gelap Toggle Button */}
@@ -894,6 +997,7 @@ export default function App() {
                 onConfirmReset={() => setIsResetConfirmOpen(true)}
                 onBackup={handleBackup}
                 onRestore={handleRestore}
+                onOpenCloudSync={() => setIsCloudModalOpen(true)}
                 isDarkMode={theme === 'dark'}
               />
             )}
@@ -965,6 +1069,18 @@ export default function App() {
         type="reset"
         onClose={() => setIsResetConfirmOpen(false)}
         onConfirm={handleExecuteResetAll}
+      />
+
+      {/* Cloud Sync Diagnostics & Cross-PC Action Modal */}
+      <CloudSyncModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        cloudStatus={cloudStatus}
+        cloudError={cloudError}
+        localCount={transactions.length}
+        lastSyncedTime={lastSyncedTime}
+        onForceUpload={handleForceUploadToCloud}
+        onForceDownload={handleForceDownloadFromCloud}
       />
     </div>
   );

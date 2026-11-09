@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Edit2,
   Package,
+  Cloud,
 } from 'lucide-react';
 import {
   Transaction,
@@ -37,6 +38,7 @@ interface DashboardViewProps {
   onConfirmReset: () => void;
   onBackup: () => void;
   onRestore: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenCloudSync?: () => void;
   isDarkMode?: boolean;
 }
 
@@ -54,6 +56,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onConfirmReset,
   onBackup,
   onRestore,
+  onOpenCloudSync,
   isDarkMode = false,
 }) => {
   // Pagination states
@@ -296,6 +299,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onChange={onRestore}
               />
             </label>
+            {onOpenCloudSync && (
+              <button
+                onClick={onOpenCloudSync}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka panel sinkronisasi Google Firebase Cloud (Multi-PC)"
+              >
+                <Cloud className="w-3.5 h-3.5" /> Sync Cloud
+              </button>
+            )}
           </div>
         )}
       </div>
